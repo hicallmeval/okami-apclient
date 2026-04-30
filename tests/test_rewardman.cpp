@@ -51,7 +51,9 @@ class RewardManFixture
 
     bool isBrushUpgradeUnlocked(int upgradeIndex)
     {
-        return readGameBit(apgame::brushUpgrades.get_ptr(), upgradeIndex);
+        // brushUpgrades is BitField<32> queried by the game via IsSet, not
+        // the LSB-first byte convention used for the brush bitfields.
+        return apgame::brushUpgrades->IsSet(upgradeIndex);
     }
 
     bool isKeyItemAcquired(int bit)

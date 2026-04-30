@@ -42,7 +42,7 @@ void CheckMan::initialize()
     // which takes g_CallbackMutex. Doing this from poll() would deadlock
     // because the game-tick dispatcher holds that same mutex across user
     // callbacks. The hook stays inactive (no-op) until setActive(true).
-    brushHandler_ = std::make_unique<checks::BrushMan>(callback);
+    brushHandler_ = std::make_unique<checks::BrushMan>(callback, [this](int64_t locId) { return socket_.isValidLocation(locId); });
     brushHandler_->initialize();
     syncBrushActiveState();
 

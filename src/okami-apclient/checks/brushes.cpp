@@ -75,19 +75,33 @@ bool dispatchBrushEdit(int bitIndex, int operation, BrushMan &handler)
     if (!g_active.load(std::memory_order_acquire))
         return false;
 
-    // Transition gate: re-sets (save restore, cutscene bookkeeping) pass through.
-    if (isObtainedBitSet(bitIndex))
+    const int64_t checkId = getBrushCheckId(bitIndex);
+
+    // Only intercept bits whose location ID is in the APWorld. Bits the
+    // apworld doesn't own (sunrise_default at idx 1, the per-Bloom sub-bits
+    // at 2/3, story-only bits) must pass through; otherwise we'd strip the
+    // brush from the player without handing them an AP item.
+    if (handler.isValidLocation_ && !handler.isValidLocation_(checkId))
         return false;
 
-    const int64_t checkId = getBrushCheckId(bitIndex);
+    // Always queue the location check, even when the bit is already set.
+    // Precollected brush items pre-set the bit before the player ever
+    // triggers the in-game constellation; if we skip the check here the
+    // location's AP item is never collected. CheckMan deduplicates per
+    // session.
     {
         std::lock_guard<std::mutex> lock(handler.pendingMutex_);
         handler.pendingChecks_.push_back(checkId);
     }
-    return true;
+
+    // Block only when the bit is not already set. If precollected/save-restore
+    // already set it, let the game's no-op set proceed so any side effects in
+    // its set-bit path (animation, scene bookkeeping) still run.
+    return !isObtainedBitSet(bitIndex);
 }
 
-BrushMan::BrushMan(CheckCallback checkCallback) : checkCallback_(std::move(checkCallback))
+BrushMan::BrushMan(CheckCallback checkCallback, IsValidLocationFn isValidLocation)
+    : checkCallback_(std::move(checkCallback)), isValidLocation_(std::move(isValidLocation))
 {
     wolf::logDebug("[BrushMan] constructed");
 }

@@ -156,6 +156,77 @@ TEST_CASE_METHOD(BrushFixture, "Granting Catwalk (bit 30) sets byte 3 mask 0x40"
 }
 
 // ============================================================================
+// Sunrise grant must set both bit 27 (sunrise) AND bit 1 (sunrise_default).
+// Per okami::BrushOverlay, both are required to actually use Sunrise. The
+// Kamiki tutorial normally sets bit 1, but if the Sunrise AP item lands
+// before that tutorial fires, we must set bit 1 ourselves.
+// ============================================================================
+
+TEST_CASE_METHOD(BrushFixture, "Granting Sunrise sets bit 27 and bit 1 (sunrise_default)", "[brush][regression][sunrise]")
+{
+    setUp();
+
+    constexpr int64_t kSunriseApId = 0x11B;
+    auto result = rewardMan_->grantReward(kSunriseApId);
+    REQUIRE(result.has_value());
+
+    const auto *src = rawBytes(okami::main::usableBrushes);
+
+    // bit 27 = byte 3, mask 0x08.
+    CHECK((src[3] & 0x08) != 0);
+    // bit 1 (sunrise_default) = byte 0, mask 0x02.
+    CHECK((src[0] & 0x02) != 0);
+
+    // The world-state mirror must have both as well, or the next sync wipes them.
+    const auto *world = reinterpret_cast<const uint8_t *>(apgame::usableBrushTechniques.get_ptr());
+    CHECK((world[3] & 0x08) != 0);
+    CHECK((world[0] & 0x02) != 0);
+
+    tearDown();
+}
+
+// ============================================================================
+// Bloom grant must set bits 4, 3, AND 2. The apworld doesn't distribute
+// DotTrees / Greensprout as separate items, but the game still gates those
+// abilities on the corresponding bits.
+// ============================================================================
+
+TEST_CASE_METHOD(BrushFixture, "Granting Bloom sets bits 4, 3, and 2", "[brush][regression][bloom]")
+{
+    setUp();
+
+    constexpr int64_t kBloomApId = 0x104;
+    auto result = rewardMan_->grantReward(kBloomApId);
+    REQUIRE(result.has_value());
+
+    const auto *src = rawBytes(okami::main::usableBrushes);
+    // bits 2, 3, 4 all in byte 0: mask 0x04 | 0x08 | 0x10 = 0x1C.
+    CHECK((src[0] & 0x1C) == 0x1C);
+
+    // World-state mirror.
+    const auto *world = reinterpret_cast<const uint8_t *>(apgame::usableBrushTechniques.get_ptr());
+    CHECK((world[0] & 0x1C) == 0x1C);
+
+    tearDown();
+}
+
+TEST_CASE_METHOD(BrushFixture, "Granting non-Bloom brush does not set bits 2 or 3", "[brush][regression][bloom]")
+{
+    // Belt and suspenders: make sure the Bloom-specific bit-2/3 set hasn't
+    // accidentally fallen into a generic code path.
+    setUp();
+
+    constexpr int64_t kRejuvenationApId = 0x116;
+    REQUIRE(rewardMan_->grantReward(kRejuvenationApId).has_value());
+
+    const auto *src = rawBytes(okami::main::usableBrushes);
+    CHECK((src[0] & 0x04) == 0); // bit 2 not set
+    CHECK((src[0] & 0x08) == 0); // bit 3 not set
+
+    tearDown();
+}
+
+// ============================================================================
 // Source + copy mirroring: granting writes BOTH BrushData and WorldStateData
 // ============================================================================
 
@@ -202,7 +273,7 @@ TEST_CASE("BrushMan::tick clears mapStateBits[0] index 10 (Celestial Brush Locke
     wolf::mock::reserveMemory(0xC00000 + 1024);
     apgame::initialize();
 
-    checks::BrushMan brushMan([](int64_t) {});
+    checks::BrushMan brushMan([](int64_t) {}, [](int64_t) { return true; });
     brushMan.initialize();
 
     // Game sets the lock during a scene transition.
@@ -229,7 +300,7 @@ TEST_CASE("Log 1 race: grant runs before game sets lock; subsequent tick clears 
     RewardMan rewardMan(nullptr);
     wolf::mock::triggerPlayStart();
 
-    checks::BrushMan brushMan([](int64_t) {});
+    checks::BrushMan brushMan([](int64_t) {}, [](int64_t) { return true; });
     brushMan.initialize();
 
     // 1. Grant runs while bit 10 is still 0 (no-op for any grant-time clear).
@@ -254,7 +325,7 @@ TEST_CASE("BrushMan::tick is a no-op when uninitialized", "[brush][regression][u
     wolf::mock::reserveMemory(0xC00000 + 1024);
     apgame::initialize();
 
-    checks::BrushMan brushMan([](int64_t) {});
+    checks::BrushMan brushMan([](int64_t) {}, [](int64_t) { return true; });
     // Don't initialize — simulates a teardown/before-init state.
 
     apgame::worldStateData->mapStateBits[0].Set(10);
@@ -266,34 +337,61 @@ TEST_CASE("BrushMan::tick is a no-op when uninitialized", "[brush][regression][u
 }
 
 // ============================================================================
-// Progressive brush progression: base then upgrades, in order
+// Progressive brush progression: base then upgrades, in order.
+//
+// brushUpgrades is a TrackerData BitField<32>. The game queries it via the
+// BitField API (MSB-first within each 32-bit word), and per
+// okami::game_state::global::brushUpgrades the upgrade index → label
+// dictionary is {0: "Power Slash 2", 6: "Cherry Bomb 2", 10: "Power Slash 3",
+// 11: "Cherry Bomb 3"} — those keys are BitField indices, not LSB-first
+// byte indices. So the upgrade flags we set must be readable via
+// `apgame::brushUpgrades->IsSet(N)` for the same N the game checks.
 // ============================================================================
 
-TEST_CASE_METHOD(BrushFixture, "Power Slash progression: base, then upgrade bits 0 and 10", "[brush][regression][progressive]")
+TEST_CASE_METHOD(BrushFixture, "Power Slash progression: base, then upgrades 0 and 10 (game-visible)", "[brush][regression][progressive]")
 {
     setUp();
 
     constexpr int64_t kPowerSlashApId = 0x10C;
     const auto *src = rawBytes(okami::main::usableBrushes);
-    const auto *upgrades = reinterpret_cast<const uint8_t *>(apgame::brushUpgrades.get_ptr());
 
-    // 1st grant: base (bit 12).
+    // 1st grant: base (bit 12). No upgrade flag yet.
     REQUIRE(rewardMan_->grantReward(kPowerSlashApId).has_value());
     CHECK(gameBitSet(src, 12));
-    CHECK_FALSE(gameBitSet(upgrades, 0));
-    CHECK_FALSE(gameBitSet(upgrades, 10));
+    CHECK_FALSE(apgame::brushUpgrades->IsSet(0));  // Power Slash 2
+    CHECK_FALSE(apgame::brushUpgrades->IsSet(10)); // Power Slash 3
 
-    // 2nd grant: first upgrade (bit 0 in brushUpgrades).
+    // 2nd grant: Power Slash 2 — must land at the bit the game reads.
     REQUIRE(rewardMan_->grantReward(kPowerSlashApId).has_value());
-    CHECK(gameBitSet(upgrades, 0));
-    CHECK_FALSE(gameBitSet(upgrades, 10));
+    CHECK(apgame::brushUpgrades->IsSet(0));
+    CHECK_FALSE(apgame::brushUpgrades->IsSet(10));
 
-    // 3rd grant: second upgrade (bit 10 in brushUpgrades).
+    // 3rd grant: Power Slash 3.
     REQUIRE(rewardMan_->grantReward(kPowerSlashApId).has_value());
-    CHECK(gameBitSet(upgrades, 10));
+    CHECK(apgame::brushUpgrades->IsSet(10));
 
     // 4th grant: max level — succeeds as no-op.
     REQUIRE(rewardMan_->grantReward(kPowerSlashApId).has_value());
+
+    tearDown();
+}
+
+TEST_CASE_METHOD(BrushFixture, "Cherry Bomb progression: upgrades land at game-visible bits 6 and 11", "[brush][regression][progressive]")
+{
+    setUp();
+
+    constexpr int64_t kCherryBombApId = 0x119;
+
+    // 1st grant: base (bit 25).
+    REQUIRE(rewardMan_->grantReward(kCherryBombApId).has_value());
+    CHECK_FALSE(apgame::brushUpgrades->IsSet(6));  // Cherry Bomb 2
+    CHECK_FALSE(apgame::brushUpgrades->IsSet(11)); // Cherry Bomb 3
+
+    REQUIRE(rewardMan_->grantReward(kCherryBombApId).has_value());
+    CHECK(apgame::brushUpgrades->IsSet(6));
+
+    REQUIRE(rewardMan_->grantReward(kCherryBombApId).has_value());
+    CHECK(apgame::brushUpgrades->IsSet(11));
 
     tearDown();
 }
@@ -311,6 +409,11 @@ class BrushManFixture
     std::vector<int64_t> sentChecks_;
     std::unique_ptr<checks::BrushMan> brushMan_;
 
+    // Default predicate: every brush location is in the apworld. Individual
+    // tests can install a narrower one before initialize() to exercise the
+    // "bit not in APWorld" passthrough.
+    std::function<bool(int64_t)> isValidLocation_ = [](int64_t) { return true; };
+
     void setUp()
     {
         wolf::mock::reset();
@@ -318,7 +421,7 @@ class BrushManFixture
         wolf::mock::reserveMemory(0xC00000 + 1024);
         apgame::initialize();
         sentChecks_.clear();
-        brushMan_ = std::make_unique<checks::BrushMan>([this](int64_t id) { sentChecks_.push_back(id); });
+        brushMan_ = std::make_unique<checks::BrushMan>([this](int64_t id) { sentChecks_.push_back(id); }, [this](int64_t id) { return isValidLocation_(id); });
         brushMan_->initialize();
         brushMan_->setActive(true);
     }
@@ -406,17 +509,55 @@ TEST_CASE_METHOD(BrushManFixture, "BrushMan: inactive hook never blocks or queue
     tearDown();
 }
 
-TEST_CASE_METHOD(BrushManFixture, "BrushMan: already-obtained bit falls through", "[brush][regression][brushman][gating]")
+TEST_CASE_METHOD(BrushManFixture, "BrushMan: already-obtained bit still queues a check", "[brush][regression][brushman][gating]")
 {
+    // Precollected brushes pre-set the obtained bit, so when the player
+    // later triggers the in-game constellation, the dispatcher must still
+    // send the location check (the location belongs to the apworld and its
+    // item hasn't been collected yet) — but it should NOT block the game's
+    // set-bit operation, since blocking a redundant set has no effect and
+    // might suppress unrelated side effects in the game's set path.
     setUp();
 
     // Pre-set the obtained bit at the source (bit 12 = byte 1 mask 0x10).
     auto *src = wolf::mock::mockMemory.data() + okami::main::obtainedBrushes;
     src[1] |= 0x10;
 
-    CHECK_FALSE(wolf::mock::triggerBrushEdit(12, 0));
+    CHECK_FALSE(wolf::mock::triggerBrushEdit(12, 0)); // pass through
+    brushMan_->tick();
+    REQUIRE(sentChecks_.size() == 1); // but check IS sent
+    CHECK(sentChecks_[0] == 200012);
+
+    tearDown();
+}
+
+TEST_CASE_METHOD(BrushManFixture, "BrushMan: bit with no APWorld location is full passthrough", "[brush][regression][brushman][gating]")
+{
+    // The Sakigami constellation sets bits 2, 3, and 4 — but only bit 4
+    // (Bloom) corresponds to an APWorld location. Bits 2 and 3 must pass
+    // through to the game so the player keeps the Greensprout / DotTrees
+    // sub-abilities; otherwise we strip them without an AP item in return.
+    // Same shape for the Kamiki Sunrise tutorial: bit 1 (sunrise_default)
+    // is set by story progression but has no apworld location.
+    isValidLocation_ = [](int64_t id) { return id == 200004; }; // only Bloom
+
+    setUp();
+
+    // Bit 2 (greensprout) — no AP location → pass through, no check.
+    CHECK_FALSE(wolf::mock::triggerBrushEdit(2, 0));
+    // Bit 3 (dot_trees) — no AP location → pass through, no check.
+    CHECK_FALSE(wolf::mock::triggerBrushEdit(3, 0));
+    // Bit 1 (sunrise_default) — no AP location → pass through, no check.
+    CHECK_FALSE(wolf::mock::triggerBrushEdit(1, 0));
+
     brushMan_->tick();
     CHECK(sentChecks_.empty());
+
+    // Bit 4 (Bloom) — has AP location → block + queue check.
+    CHECK(wolf::mock::triggerBrushEdit(4, 0));
+    brushMan_->tick();
+    REQUIRE(sentChecks_.size() == 1);
+    CHECK(sentChecks_[0] == 200004);
 
     tearDown();
 }
@@ -472,7 +613,7 @@ TEST_CASE("BrushMan: destroyed instance does not dangle", "[brush][regression][b
 
     int callCount = 0;
     {
-        checks::BrushMan tmp([&](int64_t) { ++callCount; });
+        checks::BrushMan tmp([&](int64_t) { ++callCount; }, [](int64_t) { return true; });
         tmp.initialize();
         tmp.setActive(true);
         REQUIRE(wolf::mock::triggerBrushEdit(12, 0));
@@ -496,11 +637,11 @@ TEST_CASE("BrushMan: replacing the active instance routes to the latest", "[brus
     int firstCount = 0;
     int secondCount = 0;
 
-    auto first = std::make_unique<checks::BrushMan>([&](int64_t) { ++firstCount; });
+    auto first = std::make_unique<checks::BrushMan>([&](int64_t) { ++firstCount; }, [](int64_t) { return true; });
     first->initialize();
     first->setActive(true);
 
-    auto second = std::make_unique<checks::BrushMan>([&](int64_t) { ++secondCount; });
+    auto second = std::make_unique<checks::BrushMan>([&](int64_t) { ++secondCount; }, [](int64_t) { return true; });
     second->initialize(); // claims g_activeHandler from `first`
     second->setActive(true);
 
