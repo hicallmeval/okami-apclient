@@ -22,8 +22,11 @@ class BrushMan
 {
   public:
     using CheckCallback = std::function<void(int64_t)>;
+    // Predicate: does the AP world contain a location with this id? Used to
+    // gate interception so we don't block brush bits the APWorld doesn't own.
+    using IsValidLocationFn = std::function<bool(int64_t)>;
 
-    explicit BrushMan(CheckCallback checkCallback);
+    BrushMan(CheckCallback checkCallback, IsValidLocationFn isValidLocation);
     ~BrushMan();
 
     BrushMan(const BrushMan &) = delete;
@@ -44,6 +47,7 @@ class BrushMan
 
   private:
     CheckCallback checkCallback_;
+    IsValidLocationFn isValidLocation_;
     bool initialized_ = false;
 
     std::mutex pendingMutex_;

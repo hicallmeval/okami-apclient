@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 
+#include <okami/brushes.hpp>
 #include <wolf_framework.hpp>
 
 #include "../gamestate_accessors.hpp"
@@ -107,8 +108,27 @@ std::expected<void, RewardError> grant(int64_t apItemId)
         return grantProgressiveBrush(brushIndex, kCherryBombUpgrades);
     }
 
-    // Simple brush
     grantSimpleBrush(brushIndex);
+
+    // Sunrise (bit 27) requires sunrise_default (bit 1) to actually be usable;
+    // see okami::BrushOverlay. The Kamiki tutorial normally sets bit 1 when
+    // the player first uses Sunrise, but if the AP item lands before that
+    // tutorial fires we need to set bit 1 ourselves.
+    if (apItemId == 0x11B) // Sunrise
+    {
+        grantSimpleBrush(static_cast<int>(okami::BrushOverlay::sunrise_default));
+    }
+
+    // Bloom (bit 4) is the bloom-circle ability. The two adjacent bits —
+    // greensprout (2) and dot_trees (3) — gate cursed-patch bloom and
+    // tree-growing respectively, and the apworld doesn't ship them as
+    // separate items. Vanilla Sakigami sets all three at once; mirror that.
+    if (apItemId == 0x104) // Greensprout (Bloom)
+    {
+        grantSimpleBrush(static_cast<int>(okami::BrushOverlay::greensprout));
+        grantSimpleBrush(static_cast<int>(okami::BrushOverlay::dot_trees));
+    }
+
     return {};
 }
 
