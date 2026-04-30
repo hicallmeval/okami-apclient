@@ -761,3 +761,67 @@ TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: container path still re
 
     itempatch::clearContainerContext();
 }
+
+namespace
+{
+const uint16_t *__fastcall stubOrigGetMSDString(void * /*pBase*/, uint16_t index)
+{
+    // Sentinel return value so the test can assert pass-through happened.
+    // The pointer's identity is what matters; the contents are irrelevant.
+    static thread_local uint16_t s_lastIndex = 0;
+    s_lastIndex = index;
+    return reinterpret_cast<const uint16_t *>(&s_lastIndex);
+}
+} // namespace
+
+TEST_CASE("hookGetMSDString: virtual scouted-name indices do not leak into unrelated MSD lookups (issue #113)",
+          "[itempatch][hooks][regression]")
+{
+    // The bleed-through that survived the first round of fixes: every scouted
+    // item registered through registerScoutedItemName claims a virtual MSD
+    // index starting at 0x1000 (kCustomStringBase). The game's own MSD files
+    // also allocate strIds throughout that range -- area-banner strings,
+    // brush textboxes, dialog snippets, etc. The previous fallback in
+    // hookGetMSDString blindly returned our scouted name whenever a query's
+    // index >= 0x1000 happened to collide with a registered virtual idx,
+    // which is why entering Shinshu showed "Progressive Cherry Bomb" as the
+    // area banner.
+    wolf::mock::reset();
+    itempatch::initializeEarly();
+    itempatch::initialize();
+    itempatch::resetState();
+
+    // Set up a stub for the original GetMSDString so the hook can pass through
+    // safely. The stub returns a sentinel pointer; we assert against it.
+    itempatch::setOrigGetMSDStringForTests(&stubOrigGetMSDString);
+
+    // Register a scouted name -- it lands at virtual idx 0x1000.
+    itempatch::registerScoutedItemName(50000, "Cherry Bomb");
+
+    // Player is in a cutscene: no shop, no container context. The game queries
+    // an MSD strId of 0x1000 (e.g. for an area banner that happens to be
+    // assigned that strId in the per-area MSD).
+    itempatch::setShopMenuActiveOverrideForTests(0);
+    itempatch::setShopPointer(nullptr);
+    itempatch::setCurrentShopId(-1);
+    itempatch::clearContainerContext();
+
+    auto it = wolf::mock::registeredHooks.find(0x1C8A80);
+    REQUIRE(it != wolf::mock::registeredHooks.end());
+    using HookFn = const uint16_t *(__fastcall *)(void *, uint16_t);
+    auto fn = reinterpret_cast<HookFn>(it->second);
+
+    const uint16_t *result = fn(nullptr, 0x1000);
+
+    // Pass-through stub returns the queried strId itself as the first uint16.
+    // The bleed branch would have returned the encoded "Cherry Bomb" string,
+    // whose first character ('C') maps to MSD char 25. Verifying the first
+    // uint16 distinguishes the two outcomes.
+    REQUIRE(result != nullptr);
+    auto cherryBomb = okami::MSDManager::CompileString("Cherry Bomb");
+    REQUIRE(result[0] != cherryBomb[0]);
+    REQUIRE(result[0] == 0x1000); // sentinel from stub: the queried index
+
+    itempatch::setOrigGetMSDStringForTests(nullptr);
+    itempatch::resetState();
+}

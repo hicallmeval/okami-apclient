@@ -289,13 +289,12 @@ static const uint16_t *__fastcall hookGetMSDString(void *pBase, uint16_t index)
         return s_origGetMSDString(pBase, remapped);
     }
 
-    // Virtual string table (for other possible uses)
-    if (index >= static_cast<uint16_t>(kCustomStringBase))
-    {
-        auto it = s_customStrings.find(static_cast<int16_t>(index));
-        if (it != s_customStrings.end())
-            return it->second.data();
-    }
+    // No more intercepts: every other path -- cutscene area banners, brush
+    // textboxes, the bottom-of-screen dialog system, etc. -- must pass through
+    // unchanged. (We previously kept a fallback here that looked up indices
+    // >= kCustomStringBase in s_customStrings, but the game allocates strIds
+    // throughout the 0x1000+ range and would silently match our virtual
+    // indices, replacing area names with item names. See issue #113.)
     return s_origGetMSDString(pBase, index);
 }
 
@@ -390,6 +389,11 @@ void resetState()
 void setShopMenuActiveOverrideForTests(int state)
 {
     s_shopMenuActiveOverride = state < 0 ? -1 : (state ? 1 : 0);
+}
+
+void setOrigGetMSDStringForTests(GetMSDStringForTestsFn fn)
+{
+    s_origGetMSDString = reinterpret_cast<GetMSDStringFn>(fn);
 }
 
 bool hasCustomIcons()
