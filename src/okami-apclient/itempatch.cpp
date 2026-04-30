@@ -147,8 +147,16 @@ static hx::Texture *__fastcall hookGetItemIcon(okami::cItemShop *pShop, int item
     return s_origGetItemIcon(pShop, item);
 }
 
-constexpr uint16_t kInfoPanelBase = 294;
-constexpr uint16_t kShopListBase = 0x2000;
+// Ground truth from in-game testing (see issue #124 reproduction screenshots):
+//   * The shop's row LIST queries `294 + itemType` -- the standard item-name
+//     base. Every visible row of the same dummy type shares one strId, so a
+//     slot-keyed substitution there would make every row of a type render as
+//     the currently-selected slot's name and flicker on cursor movement.
+//   * The shop's bottom INFO PANEL queries `0x2000 + itemType`. Only one item
+//     is shown there at a time (the selected slot), so resolving to the
+//     selected slot's scouted name is safe and unambiguous.
+constexpr uint16_t kListBase = 294;
+constexpr uint16_t kInfoPanelBase = 0x2000;
 
 constexpr auto kDummyTypes = std::to_array<uint16_t>({
     okami::ItemTypes::ForeignStandardItem,
@@ -159,27 +167,27 @@ constexpr auto kDummyTypes = std::to_array<uint16_t>({
     okami::ItemTypes::OkamiTrapItem,
 });
 
-/// True for an AP dummy item's info-panel strId (itemType + 294). The shop
-/// renders the selected item's detailed name from this strId, so it's safe
-/// to substitute the scouted name here.
+/// True for an AP dummy item's info-panel strId (itemType + 0x2000). Only the
+/// selected slot's item is rendered through this strId, so it's safe to
+/// substitute the scouted name here.
 static constexpr bool isApDummyInfoPanelStrId(uint16_t index)
 {
     return std::ranges::any_of(kDummyTypes, [&](uint16_t t) { return index == t + kInfoPanelBase; });
 }
 
-/// True for an AP dummy item's shop-list strId (itemType + 0x2000). Multiple
-/// list rows share the same strId per type, so a slot-keyed lookup would make
-/// every visible row render as the currently-selected slot's name (issue #124).
-static constexpr bool isApDummyShopListStrId(uint16_t index)
+/// True for an AP dummy item's shop-list strId (itemType + 294). Multiple list
+/// rows share the same strId per type, so a slot-keyed lookup would make every
+/// visible row render as the currently-selected slot's name (issue #124).
+static constexpr bool isApDummyListStrId(uint16_t index)
 {
-    return std::ranges::any_of(kDummyTypes, [&](uint16_t t) { return index == t + kShopListBase; });
+    return std::ranges::any_of(kDummyTypes, [&](uint16_t t) { return index == t + kListBase; });
 }
 
 /// True for either path. Used by the container floating-name path, where the
 /// strId may come through either channel and there is only one item visible.
 static constexpr bool isApDummyAnyStrId(uint16_t index)
 {
-    return isApDummyInfoPanelStrId(index) || isApDummyShopListStrId(index);
+    return isApDummyInfoPanelStrId(index) || isApDummyListStrId(index);
 }
 
 static void __fastcall hookLoadCore20MSD(void *pMsgStruct)
@@ -239,11 +247,12 @@ const uint16_t *resolveApItemName(uint16_t strId)
     // Shop path: only resolve while the player is actually looking at a shop
     // menu. Without this gate, stale shop context bleeds the scouted name into
     // cutscene area titles, brush textboxes, etc. (issue #113). And only the
-    // info-panel strId resolves to the selected slot - the shop-list strId is
-    // shared across every visible row, so resolving by selected slot would make
-    // all row names flicker as the cursor moves (issue #124). The shop list
-    // falls through to the kShopListBase->kInfoPanelBase remap in
-    // hookGetMSDString, which yields the dummy type's generic name.
+    // info-panel strId (0x2000+) resolves to the selected slot -- the list
+    // strId (294+) is shared across every visible row of the same dummy type,
+    // so resolving by selected slot would make all those row names flicker as
+    // the cursor moves between them (issue #124). The list path falls through
+    // to the override we set during hookLoadCore20MSD, which yields the dummy
+    // type's generic name ("Archipelago Item", "Okami Progression", etc.).
     if (s_currentShopId >= 0 && s_pCurrentShop && isShopMenuActive() && isApDummyInfoPanelStrId(strId))
     {
         // Offsets validated against decompiled FUN_18043ca30 (cItemShop::PurchaseItem)
@@ -267,16 +276,16 @@ static const uint16_t *__fastcall hookGetMSDString(void *pBase, uint16_t index)
     if (apResult)
         return apResult;
 
-    // Shop list strIds use itemType + 0x2000, but our MSD overrides are at
-    // itemType + 294 (info panel path). Remap so items that don't normally
-    // appear in shops (HourglassOrb, Yen, Praise, dummy types, etc.) resolve
-    // to the same name we patched into the info panel path. Gated by the live
-    // "Item shop menu" GlobalGameState bit so the remap doesn't fire in
+    // The shop's bottom info-panel queries `0x2000 + itemType`, but items not
+    // normally sold in shops (HourglassOrb, Yen, Praise, our dummy types, etc.)
+    // have no entry at that strId. Fall back to the standard item-name strId
+    // (294 + itemType) where our hookLoadCore20MSD overrides live. Gated by the
+    // live "Item shop menu" GlobalGameState bit so the remap doesn't fire in
     // cutscenes, where strIds in the 0x2000+ range may belong to unrelated
     // dialog and would otherwise be silently rewritten (issue #113).
-    if (isShopMenuActive() && index >= kShopListBase && index < kShopListBase + okami::ItemTypes::NUM_ITEM_TYPES)
+    if (isShopMenuActive() && index >= kInfoPanelBase && index < kInfoPanelBase + okami::ItemTypes::NUM_ITEM_TYPES)
     {
-        uint16_t remapped = static_cast<uint16_t>((index - kShopListBase) + kInfoPanelBase);
+        uint16_t remapped = static_cast<uint16_t>((index - kInfoPanelBase) + kListBase);
         return s_origGetMSDString(pBase, remapped);
     }
 
