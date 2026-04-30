@@ -422,6 +422,49 @@ void ShopMan::scoutShopsForMap(uint16_t mapId)
     }
 }
 
+// When the combined icon package isn't available, AP-dummy item types have no
+// vanilla icon-table entry and rendering them crashes the game. Substitute a
+// vanilla item type that has an icon — chestnut (the same value we redirect
+// to in itempatch::hookBuildItemResourceName for the matching model crash).
+constexpr okami::ItemTypes::Enum kIconlessFallback = static_cast<okami::ItemTypes::Enum>(0x83);
+
+okami::ItemTypes::Enum selectShopItemType(const ScoutedItem &scouted, int mySlot, bool hasCustomIcons)
+{
+    auto isWeapon = [](int itemId) { return itemId >= okami::ItemTypes::DivineRetribution && itemId <= okami::ItemTypes::ThunderEdge; };
+
+    const bool isNative = !rewards::isForeignItem(scouted.player, mySlot);
+
+    // Native, directly displayable item: pass through. Independent of icon
+    // package state — this branch never produces a dummy type.
+    if (isNative && rewards::game_items::isDirectGameItem(scouted.item))
+    {
+        const int rawItem = rewards::game_items::getItemId(scouted.item);
+        if (!isWeapon(rawItem))
+            return static_cast<okami::ItemTypes::Enum>(rawItem);
+    }
+
+    // Everything else (foreign items, native progressive weapons, native
+    // brushes / event flags, native weapons that can't be shop-rendered) needs
+    // a dummy or fallback.
+    if (!hasCustomIcons)
+        return kIconlessFallback;
+
+    if (!isNative)
+    {
+        if (rewards::isTrap(scouted.flags))
+            return okami::ItemTypes::ForeignTrapItem;
+        if (rewards::isProgression(scouted.flags))
+            return okami::ItemTypes::ForeignProgressionItem;
+        return okami::ItemTypes::ForeignStandardItem;
+    }
+
+    if (rewards::isTrap(scouted.flags))
+        return okami::ItemTypes::OkamiTrapItem;
+    if (rewards::isProgression(scouted.flags))
+        return okami::ItemTypes::OkamiProgressionItem;
+    return okami::ItemTypes::OkamiStandardItem;
+}
+
 void ShopMan::populateShopFromScoutedData(int shopId)
 {
     wolf::logDebug("[ShopMan] populateShopFromScoutedData called for shopId=%d", shopId);
@@ -435,12 +478,14 @@ void ShopMan::populateShopFromScoutedData(int shopId)
 
     shop->ClearStock();
 
-    int slotCount = socket_.getSlotConfig().shopSlots;
-    wolf::logDebug("[ShopMan] Populating %d slots", slotCount);
+    const int slotCount = socket_.getSlotConfig().shopSlots;
+    const int mySlot = socket_.getPlayerSlot();
+    const bool hasCustomIcons = itempatch::hasCustomIcons();
+    wolf::logDebug("[ShopMan] Populating %d slots (hasCustomIcons=%d)", slotCount, hasCustomIcons ? 1 : 0);
 
     for (int slot = 0; slot < slotCount; ++slot)
     {
-        int64_t locationId = checks::getShopCheckId(shopId, slot);
+        const int64_t locationId = checks::getShopCheckId(shopId, slot);
         auto it = scoutedItems_.find(locationId);
         if (it == scoutedItems_.end())
         {
@@ -449,71 +494,22 @@ void ShopMan::populateShopFromScoutedData(int shopId)
         }
 
         const ScoutedItem &scouted = it->second;
+        const okami::ItemTypes::Enum gameItem = selectShopItemType(scouted, mySlot, hasCustomIcons);
 
-        // Convert AP item ID to game item
-        okami::ItemTypes::Enum gameItem;
-
-        // Helper to check if a game item is a weapon (divine instruments can't be displayed in shops)
-        auto isWeapon = [](int itemId) { return itemId >= okami::ItemTypes::DivineRetribution && itemId <= okami::ItemTypes::ThunderEdge; };
-
-        const int mySlot = socket_.getPlayerSlot();
-        const bool isNative = !rewards::isForeignItem(scouted.player, mySlot);
-
-        // Helper to select a native Okami dummy item based on AP classification flags
-        auto nativeDummy = [](unsigned flags)
-        {
-            if (rewards::isTrap(flags))
-                return okami::ItemTypes::OkamiTrapItem;
-            if (rewards::isProgression(flags))
-                return okami::ItemTypes::OkamiProgressionItem;
-            return okami::ItemTypes::OkamiStandardItem;
-        };
-
-        if (isNative && rewards::game_items::isDirectGameItem(scouted.item))
-        {
-            int rawItem = rewards::game_items::getItemId(scouted.item);
-            if (isWeapon(rawItem))
-            {
-                // Weapons can't be displayed in item shops - use dummy
-                gameItem = nativeDummy(scouted.flags);
-                itempatch::registerScoutedItemName(locationId, socket_.getItemName(scouted.item, socket_.getPlayerSlot()));
-                wolf::logDebug("[ShopMan] Slot %d: native AP item %lld -> weapon %d, using dummy %d", slot, scouted.item, rawItem, static_cast<int>(gameItem));
-            }
-            else
-            {
-                // Displayable native item — use raw type for vanilla icon and name
-                gameItem = static_cast<okami::ItemTypes::Enum>(rawItem);
-                wolf::logDebug("[ShopMan] Slot %d: native AP item %lld -> game item %d", slot, scouted.item, rawItem);
-            }
-        }
-        else if (isNative && rewards::game_items::isProgressiveWeapon(scouted.item))
-        {
-            // Progressive weapons always need dummy in shops
-            gameItem = nativeDummy(scouted.flags);
-            itempatch::registerScoutedItemName(locationId, socket_.getItemName(scouted.item, socket_.getPlayerSlot()));
-            wolf::logDebug("[ShopMan] Slot %d: native AP item %lld -> progressive weapon, using dummy %d", slot, scouted.item, static_cast<int>(gameItem));
-        }
-        else if (isNative)
-        {
-            // Native brushes, event flags, etc.
-            gameItem = nativeDummy(scouted.flags);
-            itempatch::registerScoutedItemName(locationId, socket_.getItemName(scouted.item, socket_.getPlayerSlot()));
-            wolf::logDebug("[ShopMan] Slot %d: native AP item %lld -> non-game item, using dummy %d (flags=0x%x)", slot, scouted.item,
-                           static_cast<int>(gameItem), scouted.flags);
-        }
-        else
-        {
-            // Foreign item — select AP dummy type based on classification flags
-            if (rewards::isTrap(scouted.flags))
-                gameItem = okami::ItemTypes::ForeignTrapItem;
-            else if (rewards::isProgression(scouted.flags))
-                gameItem = okami::ItemTypes::ForeignProgressionItem;
-            else
-                gameItem = okami::ItemTypes::ForeignStandardItem;
+        // Register the scouted name keyed by location so the MSD hook can
+        // resolve it when a dummy type is rendered. Skipped when we passed
+        // the native item type through directly (display name is correct
+        // already) and when we substituted the icon-less fallback (the
+        // fallback type isn't a dummy strId, so the lookup wouldn't fire
+        // anyway).
+        const bool isDummy = gameItem == okami::ItemTypes::ForeignStandardItem || gameItem == okami::ItemTypes::ForeignProgressionItem ||
+                             gameItem == okami::ItemTypes::ForeignTrapItem || gameItem == okami::ItemTypes::OkamiStandardItem ||
+                             gameItem == okami::ItemTypes::OkamiProgressionItem || gameItem == okami::ItemTypes::OkamiTrapItem;
+        if (isDummy)
             itempatch::registerScoutedItemName(locationId, socket_.getItemName(scouted.item, scouted.player));
-            wolf::logDebug("[ShopMan] Slot %d: foreign AP item %lld -> dummy type %d (flags=0x%x)", slot, scouted.item, static_cast<int>(gameItem),
-                           scouted.flags);
-        }
+
+        wolf::logDebug("[ShopMan] Slot %d: AP item %lld (player %d, flags 0x%x) -> game item %d", slot, scouted.item, scouted.player, scouted.flags,
+                       static_cast<int>(gameItem));
 
         // TODO: Get actual price from AP data or slot_data
         constexpr int32_t placeholderCost = 100;

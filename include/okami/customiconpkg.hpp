@@ -1,8 +1,10 @@
 #pragma once
 
 #include <array>
+#include <expected>
 #include <filesystem>
 #include <span>
+#include <string>
 #include <string_view>
 
 #include "okami/itemtype.hpp"
@@ -58,12 +60,13 @@ inline constexpr std::string_view kPackageResourceName = "archipelago/customicon
 /// Build a combined package: all entries from the encrypted vanilla package at
 /// vanillaPath, followed by the custom DDS icons.  The combined package is written
 /// to outPath using the same Blowfish format.
-/// vanillaCount receives the number of vanilla entries (= 0-based index of the
-/// first custom entry in the combined package).
-/// Returns true on success; false if the vanilla package cannot be read or DDS
-/// files are missing.
-[[nodiscard]] bool buildCombinedFromFiles(const std::filesystem::path &outPath, const std::filesystem::path &vanillaPath,
-                                          const std::filesystem::path &standardPath, const std::filesystem::path &progressionPath,
-                                          const std::filesystem::path &trapPath, int &vanillaCount);
+///
+/// Returns the number of vanilla entries on success (= 0-based index of the
+/// first custom entry in the combined package). On failure returns a string
+/// naming the specific input that couldn't be processed (vanilla DAT,
+/// individual DDS file, or output write), so the caller can log it.
+[[nodiscard]] std::expected<int, std::string>
+buildCombinedFromFiles(const std::filesystem::path &outPath, const std::filesystem::path &vanillaPath, const std::filesystem::path &standardPath,
+                       const std::filesystem::path &progressionPath, const std::filesystem::path &trapPath);
 
 } // namespace okami::customiconpkg

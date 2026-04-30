@@ -334,6 +334,16 @@ void resetState()
     clearContainerContext();
 }
 
+bool hasCustomIcons()
+{
+    return s_customIconBase >= 0;
+}
+
+void setHasCustomIconsForTests(bool present)
+{
+    s_customIconBase = present ? 1 : -1;
+}
+
 void registerScoutedItemName(int64_t locationId, const std::string &name)
 {
     if (s_nextCustomIndex >= INT16_MAX)
@@ -369,17 +379,18 @@ void initializeEarly()
     if (!std::filesystem::exists(vanillaPath))
         vanillaPath = std::filesystem::current_path() / "data_pc" / "id" / "ItemShopBuyIcon.dat";
 
-    int vanillaCount = 0;
-    if (okami::customiconpkg::buildCombinedFromFiles(cwdPkgPath, vanillaPath, standardPath, progressionPath, trapPath, vanillaCount))
+    auto buildResult = okami::customiconpkg::buildCombinedFromFiles(cwdPkgPath, vanillaPath, standardPath, progressionPath, trapPath);
+    if (buildResult)
     {
-        s_customIconBase = vanillaCount + 1; // +1: s_loadRscIdx is 1-based
-        wolf::logInfo("[itempatch] Combined icon package built: %s (vanilla: %d, custom: %zu)", cwdPkgPath.string().c_str(), vanillaCount,
+        s_customIconBase = *buildResult + 1; // +1: s_loadRscIdx is 1-based
+        wolf::logInfo("[itempatch] Combined icon package built: %s (vanilla: %d, custom: %zu)", cwdPkgPath.string().c_str(), *buildResult,
                       okami::customiconpkg::kIconEntries.size());
     }
     else
     {
-        wolf::logError("[itempatch] Failed to build combined icon package. Vanilla: %s, Icons: %s", vanillaPath.string().c_str(),
-                       (modDir / "game-data/icons/").string().c_str());
+        // Shop slots backed by AP-dummy item types will fall back to a vanilla
+        // item to avoid the icon-table OOB crash; see ShopMan::populateShopFromScoutedData.
+        wolf::logError("[itempatch] Failed to build combined icon package: %s", buildResult.error().c_str());
     }
 
     // GetNumEntries must be hooked before flower_startup runs the texture

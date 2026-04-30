@@ -65,6 +65,17 @@ okami::ItemShopStock *GetCurrentDemonFangShopData(uint16_t mapId, uint32_t *pNum
     return MaxShopStockSize;
 }
 
+/// Decide which game item type a shop slot should display for a scouted AP item.
+///
+/// When `hasCustomIcons` is true, foreign items and non-displayable native items
+/// resolve to AP-dummy item types (Foreign{Standard,Progression,Trap}Item etc.)
+/// so the icon-package hook can render the AP icon and the MSD hook can swap
+/// in the scouted name. When `hasCustomIcons` is false (combined icon package
+/// failed to build), those same dummy types would walk off the vanilla icon
+/// table and crash the game on render — substitute a vanilla item so the slot
+/// is still purchasable.
+[[nodiscard]] okami::ItemTypes::Enum selectShopItemType(const ScoutedItem &scouted, int mySlot, bool hasCustomIcons);
+
 /**
  * @brief Manager for shop randomization and purchase detection
  *

@@ -9,7 +9,9 @@
 
 #include "checks/check_types.hpp"
 #include "checks/shops.hpp"
+#include "isocket.h"
 #include "mock_archipelagosocket.h"
+#include "rewards/reward_types.hpp"
 #include "wolf_framework.hpp"
 
 // ============================================================================
@@ -437,4 +439,83 @@ TEST_CASE_METHOD(ShopManFixture, "ShopMan shutdown clears active instance", "[sh
     shopMan_->shutdown();
 
     TearDown();
+}
+
+// ============================================================================
+// selectShopItemType: shop slot item-type substitution
+//
+// When the combined icon package is built, foreign / non-displayable items
+// resolve to AP-dummy item types so the icon hook can render the AP icon and
+// the MSD hook can swap in the scouted name. When the icon package is missing,
+// those same dummy types crash the game on render, so the slot must fall back
+// to a vanilla item type that the game already has an icon for.
+// ============================================================================
+
+namespace
+{
+constexpr unsigned kProgressionFlag = static_cast<unsigned>(rewards::APItemFlags::Progression);
+constexpr unsigned kTrapFlag = static_cast<unsigned>(rewards::APItemFlags::Trap);
+constexpr int kMyPlayer = 1;
+constexpr int kOtherPlayer = 2;
+
+ScoutedItem makeScouted(int64_t apItemId, int destinationPlayer, unsigned flags)
+{
+    return ScoutedItem{.item = apItemId, .location = 300000, .player = destinationPlayer, .flags = flags};
+}
+} // namespace
+
+TEST_CASE("selectShopItemType: native displayable item passes through unchanged", "[shops][selectShopItemType]")
+{
+    // A regular Okami item destined for the local player should always show
+    // its real type — independent of icon-package state.
+    const auto scouted = makeScouted(/*ginseng=*/0x39, kMyPlayer, 0);
+
+    CHECK(checks::selectShopItemType(scouted, kMyPlayer, /*hasCustomIcons=*/true) == 0x39);
+    CHECK(checks::selectShopItemType(scouted, kMyPlayer, /*hasCustomIcons=*/false) == 0x39);
+}
+
+TEST_CASE("selectShopItemType: foreign item uses dummy when icons available", "[shops][selectShopItemType]")
+{
+    const auto scouted = makeScouted(/*arbitrary=*/12345, kOtherPlayer, kProgressionFlag);
+
+    CHECK(checks::selectShopItemType(scouted, kMyPlayer, /*hasCustomIcons=*/true) == okami::ItemTypes::ForeignProgressionItem);
+}
+
+TEST_CASE("selectShopItemType: foreign item falls back to vanilla item when icons missing", "[shops][selectShopItemType]")
+{
+    // Without the combined icon package, the foreign-progression dummy type
+    // (0x82) has no entry in the vanilla icon table; rendering it crashes the
+    // game. Expect a vanilla item type instead — anything in the regular
+    // 0x00..0xFF range that has a vanilla icon. Chestnut (0x83) is the value
+    // we already redirect to in BuildItemResourceName for the same reason.
+    const auto scouted = makeScouted(12345, kOtherPlayer, kProgressionFlag);
+
+    auto result = checks::selectShopItemType(scouted, kMyPlayer, /*hasCustomIcons=*/false);
+    CHECK(result != okami::ItemTypes::ForeignProgressionItem);
+    CHECK(result != okami::ItemTypes::ForeignStandardItem);
+    CHECK(result != okami::ItemTypes::ForeignTrapItem);
+    CHECK(result != okami::ItemTypes::OkamiProgressionItem);
+    CHECK(result != okami::ItemTypes::OkamiStandardItem);
+    CHECK(result != okami::ItemTypes::OkamiTrapItem);
+}
+
+TEST_CASE("selectShopItemType: native non-displayable (brush) falls back without icons", "[shops][selectShopItemType]")
+{
+    // AP-side native progression items that aren't directly displayable (a
+    // brush AP item id, here 0x10C / Power Slash, is in the brush range —
+    // not a vanilla shop-renderable item).
+    const auto scouted = makeScouted(/*power_slash=*/0x10C, kMyPlayer, kProgressionFlag);
+
+    CHECK(checks::selectShopItemType(scouted, kMyPlayer, /*hasCustomIcons=*/true) == okami::ItemTypes::OkamiProgressionItem);
+
+    auto fallback = checks::selectShopItemType(scouted, kMyPlayer, /*hasCustomIcons=*/false);
+    CHECK(fallback != okami::ItemTypes::OkamiProgressionItem);
+    CHECK(fallback != okami::ItemTypes::OkamiStandardItem);
+    CHECK(fallback != okami::ItemTypes::OkamiTrapItem);
+}
+
+TEST_CASE("selectShopItemType: trap classification preserved when icons available", "[shops][selectShopItemType]")
+{
+    const auto scouted = makeScouted(12345, kOtherPlayer, kTrapFlag);
+    CHECK(checks::selectShopItemType(scouted, kMyPlayer, /*hasCustomIcons=*/true) == okami::ItemTypes::ForeignTrapItem);
 }
