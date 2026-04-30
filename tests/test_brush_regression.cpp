@@ -337,34 +337,61 @@ TEST_CASE("BrushMan::tick is a no-op when uninitialized", "[brush][regression][u
 }
 
 // ============================================================================
-// Progressive brush progression: base then upgrades, in order
+// Progressive brush progression: base then upgrades, in order.
+//
+// brushUpgrades is a TrackerData BitField<32>. The game queries it via the
+// BitField API (MSB-first within each 32-bit word), and per
+// okami::game_state::global::brushUpgrades the upgrade index → label
+// dictionary is {0: "Power Slash 2", 6: "Cherry Bomb 2", 10: "Power Slash 3",
+// 11: "Cherry Bomb 3"} — those keys are BitField indices, not LSB-first
+// byte indices. So the upgrade flags we set must be readable via
+// `apgame::brushUpgrades->IsSet(N)` for the same N the game checks.
 // ============================================================================
 
-TEST_CASE_METHOD(BrushFixture, "Power Slash progression: base, then upgrade bits 0 and 10", "[brush][regression][progressive]")
+TEST_CASE_METHOD(BrushFixture, "Power Slash progression: base, then upgrades 0 and 10 (game-visible)", "[brush][regression][progressive]")
 {
     setUp();
 
     constexpr int64_t kPowerSlashApId = 0x10C;
     const auto *src = rawBytes(okami::main::usableBrushes);
-    const auto *upgrades = reinterpret_cast<const uint8_t *>(apgame::brushUpgrades.get_ptr());
 
-    // 1st grant: base (bit 12).
+    // 1st grant: base (bit 12). No upgrade flag yet.
     REQUIRE(rewardMan_->grantReward(kPowerSlashApId).has_value());
     CHECK(gameBitSet(src, 12));
-    CHECK_FALSE(gameBitSet(upgrades, 0));
-    CHECK_FALSE(gameBitSet(upgrades, 10));
+    CHECK_FALSE(apgame::brushUpgrades->IsSet(0));  // Power Slash 2
+    CHECK_FALSE(apgame::brushUpgrades->IsSet(10)); // Power Slash 3
 
-    // 2nd grant: first upgrade (bit 0 in brushUpgrades).
+    // 2nd grant: Power Slash 2 — must land at the bit the game reads.
     REQUIRE(rewardMan_->grantReward(kPowerSlashApId).has_value());
-    CHECK(gameBitSet(upgrades, 0));
-    CHECK_FALSE(gameBitSet(upgrades, 10));
+    CHECK(apgame::brushUpgrades->IsSet(0));
+    CHECK_FALSE(apgame::brushUpgrades->IsSet(10));
 
-    // 3rd grant: second upgrade (bit 10 in brushUpgrades).
+    // 3rd grant: Power Slash 3.
     REQUIRE(rewardMan_->grantReward(kPowerSlashApId).has_value());
-    CHECK(gameBitSet(upgrades, 10));
+    CHECK(apgame::brushUpgrades->IsSet(10));
 
     // 4th grant: max level — succeeds as no-op.
     REQUIRE(rewardMan_->grantReward(kPowerSlashApId).has_value());
+
+    tearDown();
+}
+
+TEST_CASE_METHOD(BrushFixture, "Cherry Bomb progression: upgrades land at game-visible bits 6 and 11", "[brush][regression][progressive]")
+{
+    setUp();
+
+    constexpr int64_t kCherryBombApId = 0x119;
+
+    // 1st grant: base (bit 25).
+    REQUIRE(rewardMan_->grantReward(kCherryBombApId).has_value());
+    CHECK_FALSE(apgame::brushUpgrades->IsSet(6));  // Cherry Bomb 2
+    CHECK_FALSE(apgame::brushUpgrades->IsSet(11)); // Cherry Bomb 3
+
+    REQUIRE(rewardMan_->grantReward(kCherryBombApId).has_value());
+    CHECK(apgame::brushUpgrades->IsSet(6));
+
+    REQUIRE(rewardMan_->grantReward(kCherryBombApId).has_value());
+    CHECK(apgame::brushUpgrades->IsSet(11));
 
     tearDown();
 }
