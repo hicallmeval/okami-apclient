@@ -65,4 +65,9 @@ bool hasCustomIcons();
 /// initializeEarly(). Used by ShopMan tests to exercise the
 /// "icons-failed-to-build" fallback branch.
 void setHasCustomIconsForTests(bool present);
+
+/// Test-only: override the "Item shop menu" GlobalGameState bit lookup that
+/// gates shop-context MSD substitutions. Pass 0 or 1 to force the result; pass
+/// any negative value to clear the override and resume reading the live bit.
+void setShopMenuActiveOverrideForTests(int state);
 } // namespace itempatch
