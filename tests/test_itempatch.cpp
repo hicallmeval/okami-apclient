@@ -685,8 +685,7 @@ TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: shop list path is stabl
     REQUIRE(whenSlot1Selected == nullptr); // falls through to override
 }
 
-TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: info panel still tracks selected slot's scouted name",
-                 "[itempatch][resolve][regression]")
+TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: info panel still tracks selected slot's scouted name", "[itempatch][resolve][regression]")
 {
     // Companion to the issue #124 regression: the info-panel strId path
     // (0x2000 + dummyType) must continue to resolve to the selected slot's
@@ -714,8 +713,7 @@ TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: info panel still tracks
     REQUIRE(infoSlot3[0] == powerSlash[0]);
 }
 
-TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: nothing resolves when shop menu is closed (issue #113)",
-                 "[itempatch][resolve][regression]")
+TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: nothing resolves when shop menu is closed (issue #113)", "[itempatch][resolve][regression]")
 {
     // Reproduce the cutscene/Mist/area-name leak: shop context lingers from a
     // previous shop visit (s_currentShopId, s_pCurrentShop still set), and
@@ -737,8 +735,7 @@ TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: nothing resolves when s
     REQUIRE(itempatch::resolveApItemName(okami::ItemTypes::OkamiProgressionItem + 0x2000) == nullptr);
 }
 
-TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: container path still resolves regardless of shop menu state",
-                 "[itempatch][resolve][regression]")
+TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: container path still resolves regardless of shop menu state", "[itempatch][resolve][regression]")
 {
     // The container path is independent of the shop menu - a chest opened in
     // the overworld should still display the scouted name above the floating
@@ -774,8 +771,7 @@ const uint16_t *__fastcall stubOrigGetMSDString(void * /*pBase*/, uint16_t index
 }
 } // namespace
 
-TEST_CASE("hookGetMSDString: virtual scouted-name indices do not leak into unrelated MSD lookups (issue #113)",
-          "[itempatch][hooks][regression]")
+TEST_CASE("hookGetMSDString: virtual scouted-name indices do not leak into unrelated MSD lookups (issue #113)", "[itempatch][hooks][regression]")
 {
     // The bleed-through that survived the first round of fixes: every scouted
     // item registered through registerScoutedItemName claims a virtual MSD

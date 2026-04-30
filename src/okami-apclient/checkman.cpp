@@ -60,8 +60,10 @@ void CheckMan::initialize()
             return false;
         });
 
-    // Set up shop handler
-    shopHandler_ = std::make_unique<checks::ShopMan>(socket_, callback);
+    // Set up shop handler. Pass an isCheckSent query so the shop UI grays out
+    // already-purchased slots based on server-confirmed state, surviving game
+    // restarts (#125) -- a session-local set would let the player re-buy.
+    shopHandler_ = std::make_unique<checks::ShopMan>(socket_, callback, [this](int64_t checkId) { return hasCheckBeenSent(checkId); });
     shopHandler_->initialize();
 
     initialized_ = true;

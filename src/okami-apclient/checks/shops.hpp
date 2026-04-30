@@ -5,7 +5,6 @@
 #include <functional>
 #include <optional>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include <okami/filebuffer.h>
@@ -85,8 +84,9 @@ class ShopMan
 {
   public:
     using CheckCallback = std::function<void(int64_t)>;
+    using CheckSentQuery = std::function<bool(int64_t)>;
 
-    explicit ShopMan(ISocket &socket, CheckCallback checkCallback);
+    explicit ShopMan(ISocket &socket, CheckCallback checkCallback, CheckSentQuery isCheckSent);
     ~ShopMan();
 
     // Non-copyable, non-movable (owns hooks)
@@ -143,6 +143,11 @@ class ShopMan
 
     ISocket &socket_;
     CheckCallback checkCallback_;
+    // Asks CheckMan whether a check has been recorded as sent (server-confirmed
+    // on connect, or sent in the current session). The shop UI needs this to
+    // gray out / hide already-bought slots, including across save & reload --
+    // a session-local set would let the player re-buy after restarting (#125).
+    CheckSentQuery isCheckSent_;
     bool initialized_ = false;
 
     // Scouting cache
@@ -151,9 +156,6 @@ class ShopMan
 
     // Current shop tracking (set when ISL loads, used by purchase hooks)
     int currentShopId_ = -1;
-
-    // Tracks AP locations that have been purchased this session
-    std::unordered_set<int64_t> purchasedChecks_;
 };
 
 } // namespace checks

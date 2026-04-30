@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstring>
 #include <optional>
 
@@ -381,7 +382,9 @@ class ShopManFixture
         wolf::mock::reset();
         receivedCheckIds_.clear();
 
-        shopMan_ = std::make_unique<checks::ShopMan>(socket_, [this](int64_t checkId) { receivedCheckIds_.push_back(checkId); });
+        shopMan_ = std::make_unique<checks::ShopMan>(
+            socket_, [this](int64_t checkId) { receivedCheckIds_.push_back(checkId); },
+            [this](int64_t checkId) { return std::find(receivedCheckIds_.begin(), receivedCheckIds_.end(), checkId) != receivedCheckIds_.end(); });
     }
 
     void TearDown()
