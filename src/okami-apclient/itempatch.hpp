@@ -65,4 +65,15 @@ bool hasCustomIcons();
 /// initializeEarly(). Used by ShopMan tests to exercise the
 /// "icons-failed-to-build" fallback branch.
 void setHasCustomIconsForTests(bool present);
+
+/// Test-only: override the "Item shop menu" GlobalGameState bit lookup that
+/// gates shop-context MSD substitutions. Pass 0 or 1 to force the result; pass
+/// any negative value to clear the override and resume reading the live bit.
+void setShopMenuActiveOverrideForTests(int state);
+
+/// Test-only: install a stub for the original GetMSDString function so tests
+/// can drive hookGetMSDString and verify pass-through behavior. Pass nullptr
+/// to clear.
+using GetMSDStringForTestsFn = const uint16_t *(__fastcall *)(void *, uint16_t);
+void setOrigGetMSDStringForTests(GetMSDStringForTestsFn fn);
 } // namespace itempatch

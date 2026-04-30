@@ -428,6 +428,9 @@ struct ShopContextFixture
     {
         // Clean slate: clear all registrations and shop context from prior tests
         itempatch::resetState();
+        // Force the "Item shop menu" GlobalGameState gate so the shop path
+        // resolves without needing real game memory.
+        itempatch::setShopMenuActiveOverrideForTests(1);
         // Set up a valid shop context: shop ID, shop pointer with scroll/select at slot 0
         itempatch::setCurrentShopId(kShopId);
         mockShop[0x8A] = 0; // scrollOffset
@@ -459,7 +462,7 @@ TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: returns custom string f
     itempatch::registerScoutedItemName(locId, "Fire Arrow");
     selectSlot(0, 0);
 
-    // Info panel strId for ForeignStandardItem: 120 + 0x2000 = 8312
+    // Info panel strId for ForeignStandardItem: 0x2000 + 120 = 8312
     const uint16_t *result = itempatch::resolveApItemName(8312);
     REQUIRE(result != nullptr);
 
@@ -472,15 +475,20 @@ TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: returns custom string f
     }
 }
 
-TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: resolves both list and info panel strIds", "[itempatch][resolve]")
+TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: only info panel strId resolves; list strId falls through", "[itempatch][resolve]")
 {
     int64_t locId = locationIdForSlot(2);
     itempatch::registerScoutedItemName(locId, "Ice Rod");
     selectSlot(0, 2);
 
-    // Both paths resolve to the selected slot's scouted name
-    REQUIRE(itempatch::resolveApItemName(424) != nullptr);  // 294 + ForeignProgressionItem (list)
-    REQUIRE(itempatch::resolveApItemName(8322) != nullptr); // 0x2000 + ForeignProgressionItem (info panel)
+    // Info panel strId (0x2000 + ForeignProgressionItem) renders the SELECTED
+    // slot's detail name, so resolving it to the scouted name is correct.
+    REQUIRE(itempatch::resolveApItemName(8322) != nullptr);
+    // Shop list strId (294 + ForeignProgressionItem) is shared across every
+    // visible row of that dummy type, so resolveApItemName must NOT bind it to
+    // the selected slot - it falls through to the override "Archipelago
+    // Progression" set in hookLoadCore20MSD. (issue #124)
+    REQUIRE(itempatch::resolveApItemName(424) == nullptr);
 }
 
 TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: returns nullptr for non-AP strId", "[itempatch][resolve]")
@@ -510,8 +518,8 @@ TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: returns nullptr when no
     // Clear shop context — should fall through
     itempatch::clearShopContext();
 
-    REQUIRE(itempatch::resolveApItemName(414) == nullptr);
-    REQUIRE(itempatch::resolveApItemName(8312) == nullptr);
+    REQUIRE(itempatch::resolveApItemName(414) == nullptr);  // info panel strId
+    REQUIRE(itempatch::resolveApItemName(8312) == nullptr); // shop list strId
 }
 
 TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: returns nullptr when no name registered for slot", "[itempatch][resolve]")
@@ -522,10 +530,10 @@ TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: returns nullptr when no
     selectSlot(0, 3);
 
     // Slot 3 has no registered name
-    REQUIRE(itempatch::resolveApItemName(414) == nullptr);
+    REQUIRE(itempatch::resolveApItemName(8312) == nullptr);
 }
 
-TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: scroll offset affects slot selection", "[itempatch][resolve]")
+TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: scroll offset affects info-panel slot selection", "[itempatch][resolve]")
 {
     // Register names at slots 0 and 7
     itempatch::registerScoutedItemName(locationIdForSlot(0), "Slot Zero Item");
@@ -533,7 +541,7 @@ TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: scroll offset affects s
 
     // Select slot 0 (scroll=0, visual=0)
     selectSlot(0, 0);
-    const uint16_t *result0 = itempatch::resolveApItemName(8312); // 0x2000 + ForeignStandardItem
+    const uint16_t *result0 = itempatch::resolveApItemName(8312); // 0x2000 + ForeignStandardItem (info panel)
     REQUIRE(result0 != nullptr);
     auto expected0 = okami::MSDManager::CompileString("Slot Zero Item");
     REQUIRE(result0[0] == expected0[0]);
@@ -549,29 +557,31 @@ TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: scroll offset affects s
     REQUIRE(result0 != result7);
 }
 
-TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: all three AP item types resolve correctly", "[itempatch][resolve]")
+TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: all three Foreign AP item types resolve via info panel strId", "[itempatch][resolve]")
 {
-    // Register names at slots 0, 1, 2 for different AP item types
+    // Register names at slots 10, 11, 12 for different AP item types
     itempatch::registerScoutedItemName(locationIdForSlot(10), "Standard Thing");
     itempatch::registerScoutedItemName(locationIdForSlot(11), "Progression Thing");
     itempatch::registerScoutedItemName(locationIdForSlot(12), "Trap Thing");
 
-    // Both list (294+type) and info panel (0x2000+type) strIds should resolve
+    // Info panel strIds (0x2000+type) resolve to the selected slot's name.
+    // List strIds (294+type) intentionally fall through to the override
+    // generic dummy name (issue #124).
 
-    // ForeignStandardItem: list=414, info=8312
+    // ForeignStandardItem: info=8312, list=414
     selectSlot(10, 0);
-    REQUIRE(itempatch::resolveApItemName(414) != nullptr);
     REQUIRE(itempatch::resolveApItemName(8312) != nullptr);
+    REQUIRE(itempatch::resolveApItemName(414) == nullptr);
 
-    // ForeignProgressionItem: list=424, info=8322
+    // ForeignProgressionItem: info=8322, list=424
     selectSlot(11, 0);
-    REQUIRE(itempatch::resolveApItemName(424) != nullptr);
     REQUIRE(itempatch::resolveApItemName(8322) != nullptr);
+    REQUIRE(itempatch::resolveApItemName(424) == nullptr);
 
-    // ForeignTrapItem: list=469, info=8367
+    // ForeignTrapItem: info=8367, list=469
     selectSlot(12, 0);
-    REQUIRE(itempatch::resolveApItemName(469) != nullptr);
     REQUIRE(itempatch::resolveApItemName(8367) != nullptr);
+    REQUIRE(itempatch::resolveApItemName(469) == nullptr);
 }
 
 TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: returns nullptr when shop pointer is null", "[itempatch][resolve]")
@@ -582,29 +592,32 @@ TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: returns nullptr when sh
     // Null out just the shop pointer, keep shopId valid
     itempatch::setShopPointer(nullptr);
 
-    // 8312 = ForeignStandardItem + 0x2000 (info panel path)
+    // 8312 = 0x2000 + ForeignStandardItem (info panel path)
     REQUIRE(itempatch::resolveApItemName(8312) == nullptr);
 }
 
-TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: resolves Okami-native dummy strIds", "[itempatch][resolve]")
+TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: resolves Okami-native dummy info-panel strIds", "[itempatch][resolve]")
 {
     // Register a name at slot 0 so the shop context is valid
     itempatch::registerScoutedItemName(locationIdForSlot(0), "Power Slash");
     selectSlot(0, 0);
 
     // OkamiStandardItem (162), OkamiProgressionItem (168), OkamiTrapItem (172)
-    // Both list (294+type) and info panel (0x2000+type) should resolve
-    REQUIRE(itempatch::resolveApItemName(162 + 294) != nullptr);
+    // Info panel (0x2000+type) resolves to the selected slot's scouted name.
+    // List (294+type) intentionally falls through (issue #124).
     REQUIRE(itempatch::resolveApItemName(162 + 0x2000) != nullptr);
-    REQUIRE(itempatch::resolveApItemName(168 + 294) != nullptr);
+    REQUIRE(itempatch::resolveApItemName(162 + 294) == nullptr);
     REQUIRE(itempatch::resolveApItemName(168 + 0x2000) != nullptr);
-    REQUIRE(itempatch::resolveApItemName(172 + 294) != nullptr);
+    REQUIRE(itempatch::resolveApItemName(168 + 294) == nullptr);
     REQUIRE(itempatch::resolveApItemName(172 + 0x2000) != nullptr);
+    REQUIRE(itempatch::resolveApItemName(172 + 294) == nullptr);
 }
 
 TEST_CASE("clearShopContext: resets both shop ID and pointer", "[itempatch][live]")
 {
     uint8_t buf[0x8C] = {};
+    itempatch::resetState();
+    itempatch::setShopMenuActiveOverrideForTests(1);
     itempatch::setCurrentShopId(3);
     itempatch::setShopPointer(buf);
 
@@ -612,27 +625,203 @@ TEST_CASE("clearShopContext: resets both shop ID and pointer", "[itempatch][live
 
     // After clearing, resolve should return nullptr even with a registered name
     itempatch::registerScoutedItemName(checks::getShopCheckId(3, 0), "Cleared Item");
-    REQUIRE(itempatch::resolveApItemName(414) == nullptr);
+    REQUIRE(itempatch::resolveApItemName(8312) == nullptr); // info panel strId
+    itempatch::resetState();
 }
 
 TEST_CASE("resetState: clears all custom string registrations", "[itempatch][live]")
 {
     uint8_t buf[0x8C] = {};
+    itempatch::resetState();
+    itempatch::setShopMenuActiveOverrideForTests(1);
     itempatch::setCurrentShopId(5);
     itempatch::setShopPointer(buf);
     buf[0x8A] = 0;
     buf[0x8B] = 0;
 
     itempatch::registerScoutedItemName(checks::getShopCheckId(5, 0), "Reset Test");
-    // Verify it resolves before reset (use info panel path: 0x2000 + ForeignStandardItem)
+    // Verify it resolves before reset (use info panel path: 0x2000 + ForeignStandardItem = 8312)
     REQUIRE(itempatch::resolveApItemName(8312) != nullptr);
 
     itempatch::resetState();
 
-    // After reset, nothing should resolve (shop context cleared + registrations gone)
+    // After reset, nothing should resolve (shop context cleared + registrations gone +
+    // shop menu override reset to live state, which reads zero in tests).
+    itempatch::setShopMenuActiveOverrideForTests(1);
     itempatch::setCurrentShopId(5);
     itempatch::setShopPointer(buf);
     REQUIRE(itempatch::resolveApItemName(8312) == nullptr);
 
     itempatch::resetState(); // clean up
+}
+
+// ============================================================================
+// Regression tests
+// ============================================================================
+
+TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: shop list path is stable as cursor moves between same-type dummies (issue #124)",
+                 "[itempatch][resolve][regression]")
+{
+    // Reproduces the bug shown in the user-supplied screenshots: a shop has
+    // two OkamiProgression dummy slots (1 and 3) backing different scouted
+    // items. The shop's row LIST queries `294 + OkamiProgressionItem` for both
+    // rows. resolveApItemName must NOT bind that strId to the selected slot,
+    // or both rows would render as whichever slot is currently selected and
+    // visibly flicker between "Greensprout (Bloom)" and "Progressive Power
+    // Slash" as the cursor moves between them.
+    itempatch::registerScoutedItemName(locationIdForSlot(1), "Greensprout (Bloom)");
+    itempatch::registerScoutedItemName(locationIdForSlot(3), "Progressive Power Slash");
+
+    constexpr uint16_t kListStrId = okami::ItemTypes::OkamiProgressionItem + 294;
+
+    selectSlot(0, 1);
+    const uint16_t *whenSlot1Selected = itempatch::resolveApItemName(kListStrId);
+    selectSlot(0, 3);
+    const uint16_t *whenSlot3Selected = itempatch::resolveApItemName(kListStrId);
+
+    // List rows of the same dummy type must resolve identically regardless of
+    // selection, so the row text is stable as the cursor moves.
+    REQUIRE(whenSlot1Selected == whenSlot3Selected);
+    REQUIRE(whenSlot1Selected == nullptr); // falls through to override
+}
+
+TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: info panel still tracks selected slot's scouted name",
+                 "[itempatch][resolve][regression]")
+{
+    // Companion to the issue #124 regression: the info-panel strId path
+    // (0x2000 + dummyType) must continue to resolve to the selected slot's
+    // scouted name, since only one item is shown there at a time. Without
+    // this, the bottom info area shows the generic dummy override (e.g.
+    // "Okami Progression") even for the highlighted item, making it
+    // impossible to tell what's actually for sale.
+    itempatch::registerScoutedItemName(locationIdForSlot(1), "Greensprout (Bloom)");
+    itempatch::registerScoutedItemName(locationIdForSlot(3), "Progressive Power Slash");
+
+    constexpr uint16_t kInfoStrId = okami::ItemTypes::OkamiProgressionItem + 0x2000;
+
+    selectSlot(0, 1);
+    const uint16_t *infoSlot1 = itempatch::resolveApItemName(kInfoStrId);
+    selectSlot(0, 3);
+    const uint16_t *infoSlot3 = itempatch::resolveApItemName(kInfoStrId);
+
+    REQUIRE(infoSlot1 != nullptr);
+    REQUIRE(infoSlot3 != nullptr);
+    REQUIRE(infoSlot1 != infoSlot3);
+
+    auto greensprout = okami::MSDManager::CompileString("Greensprout (Bloom)");
+    auto powerSlash = okami::MSDManager::CompileString("Progressive Power Slash");
+    REQUIRE(infoSlot1[0] == greensprout[0]);
+    REQUIRE(infoSlot3[0] == powerSlash[0]);
+}
+
+TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: nothing resolves when shop menu is closed (issue #113)",
+                 "[itempatch][resolve][regression]")
+{
+    // Reproduce the cutscene/Mist/area-name leak: shop context lingers from a
+    // previous shop visit (s_currentShopId, s_pCurrentShop still set), and
+    // the renderer happens to query an MSD strId that overlaps an AP dummy
+    // strId. Without the gate, this returns the cached scouted name and the
+    // cutscene displays e.g. "Progressive Cherry Bomb" instead of the area.
+    itempatch::registerScoutedItemName(locationIdForSlot(0), "Cherry Bomb");
+    selectSlot(0, 0);
+
+    // Player exits the shop. The shop menu GlobalGameState bit clears, but
+    // s_currentShopId and s_pCurrentShop are still set from the last visit.
+    itempatch::setShopMenuActiveOverrideForTests(0);
+
+    // Both AP dummy strId paths must NOT substitute scouted names.
+    REQUIRE(itempatch::resolveApItemName(414) == nullptr);  // shop list
+    REQUIRE(itempatch::resolveApItemName(8312) == nullptr); // info panel
+    // Okami-native dummy types must also not substitute.
+    REQUIRE(itempatch::resolveApItemName(okami::ItemTypes::OkamiProgressionItem + 294) == nullptr);
+    REQUIRE(itempatch::resolveApItemName(okami::ItemTypes::OkamiProgressionItem + 0x2000) == nullptr);
+}
+
+TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: container path still resolves regardless of shop menu state",
+                 "[itempatch][resolve][regression]")
+{
+    // The container path is independent of the shop menu - a chest opened in
+    // the overworld should still display the scouted name above the floating
+    // item. Verify the issue #113 gate didn't accidentally block this path.
+    constexpr int64_t kContainerLoc = 9001;
+    itempatch::registerScoutedItemName(kContainerLoc, "Container Treasure");
+
+    // Shop menu is OFF (player is on the overworld), shop pointer is null.
+    itempatch::setShopMenuActiveOverrideForTests(0);
+    itempatch::setShopPointer(nullptr);
+    itempatch::setCurrentShopId(-1);
+
+    // Container context briefly active during pickup
+    itempatch::setContainerContext(kContainerLoc);
+
+    // Both list and info-panel strId paths should resolve via the container
+    // branch since only one floating name is being rendered.
+    REQUIRE(itempatch::resolveApItemName(414) != nullptr);  // list path
+    REQUIRE(itempatch::resolveApItemName(8312) != nullptr); // info panel path
+
+    itempatch::clearContainerContext();
+}
+
+namespace
+{
+const uint16_t *__fastcall stubOrigGetMSDString(void * /*pBase*/, uint16_t index)
+{
+    // Sentinel return value so the test can assert pass-through happened.
+    // The pointer's identity is what matters; the contents are irrelevant.
+    static thread_local uint16_t s_lastIndex = 0;
+    s_lastIndex = index;
+    return reinterpret_cast<const uint16_t *>(&s_lastIndex);
+}
+} // namespace
+
+TEST_CASE("hookGetMSDString: virtual scouted-name indices do not leak into unrelated MSD lookups (issue #113)",
+          "[itempatch][hooks][regression]")
+{
+    // The bleed-through that survived the first round of fixes: every scouted
+    // item registered through registerScoutedItemName claims a virtual MSD
+    // index starting at 0x1000 (kCustomStringBase). The game's own MSD files
+    // also allocate strIds throughout that range -- area-banner strings,
+    // brush textboxes, dialog snippets, etc. The previous fallback in
+    // hookGetMSDString blindly returned our scouted name whenever a query's
+    // index >= 0x1000 happened to collide with a registered virtual idx,
+    // which is why entering Shinshu showed "Progressive Cherry Bomb" as the
+    // area banner.
+    wolf::mock::reset();
+    itempatch::initializeEarly();
+    itempatch::initialize();
+    itempatch::resetState();
+
+    // Set up a stub for the original GetMSDString so the hook can pass through
+    // safely. The stub returns a sentinel pointer; we assert against it.
+    itempatch::setOrigGetMSDStringForTests(&stubOrigGetMSDString);
+
+    // Register a scouted name -- it lands at virtual idx 0x1000.
+    itempatch::registerScoutedItemName(50000, "Cherry Bomb");
+
+    // Player is in a cutscene: no shop, no container context. The game queries
+    // an MSD strId of 0x1000 (e.g. for an area banner that happens to be
+    // assigned that strId in the per-area MSD).
+    itempatch::setShopMenuActiveOverrideForTests(0);
+    itempatch::setShopPointer(nullptr);
+    itempatch::setCurrentShopId(-1);
+    itempatch::clearContainerContext();
+
+    auto it = wolf::mock::registeredHooks.find(0x1C8A80);
+    REQUIRE(it != wolf::mock::registeredHooks.end());
+    using HookFn = const uint16_t *(__fastcall *)(void *, uint16_t);
+    auto fn = reinterpret_cast<HookFn>(it->second);
+
+    const uint16_t *result = fn(nullptr, 0x1000);
+
+    // Pass-through stub returns the queried strId itself as the first uint16.
+    // The bleed branch would have returned the encoded "Cherry Bomb" string,
+    // whose first character ('C') maps to MSD char 25. Verifying the first
+    // uint16 distinguishes the two outcomes.
+    REQUIRE(result != nullptr);
+    auto cherryBomb = okami::MSDManager::CompileString("Cherry Bomb");
+    REQUIRE(result[0] != cherryBomb[0]);
+    REQUIRE(result[0] == 0x1000); // sentinel from stub: the queried index
+
+    itempatch::setOrigGetMSDStringForTests(nullptr);
+    itempatch::resetState();
 }
