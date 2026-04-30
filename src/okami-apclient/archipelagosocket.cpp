@@ -401,14 +401,10 @@ void ArchipelagoSocket::setupHandlers(const std::string &slot, const std::string
         {
             wolf::logInfo("[Socket] Received %zu items", items.size());
 
-            // Check for full inventory reset (index 0 means accept as complete inventory)
-            if (!items.empty() && items.front().index == 0)
-            {
-                wolf::logInfo("[Socket] Full inventory reset received (index 0)");
-                // TODO: Clear player's current AP inventory before processing
-                lastProcessedItemIndex_ = -1;
-            }
-
+            // AP sends the full received-items history (starting at index 0) on every
+            // (re)connect. The persisted lastProcessedItemIndex_ is the authoritative
+            // dedup cursor -- do not reset it just because the batch begins at 0, or
+            // tools/treasures get re-granted on every reconnect (issue #130).
             int highestIndex = lastProcessedItemIndex_;
             int expectedIndex = lastProcessedItemIndex_ + 1;
             int newItemCount = 0;
