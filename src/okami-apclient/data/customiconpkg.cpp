@@ -108,15 +108,14 @@ bool buildFromFiles(const std::filesystem::path &outPath, const std::filesystem:
     return build(outPath, std_data, prog_data, trap_data);
 }
 
-bool buildCombinedFromFiles(const std::filesystem::path &outPath, const std::filesystem::path &vanillaPath, const std::filesystem::path &standardPath,
-                            const std::filesystem::path &progressionPath, const std::filesystem::path &trapPath, int &vanillaCount)
+std::expected<int, std::string> buildCombinedFromFiles(const std::filesystem::path &outPath, const std::filesystem::path &vanillaPath,
+                                                       const std::filesystem::path &standardPath, const std::filesystem::path &progressionPath,
+                                                       const std::filesystem::path &trapPath)
 {
-    vanillaCount = 0;
-
     const auto vanillaEntries = readPackageEntries(vanillaPath);
     if (vanillaEntries.empty())
-        return false;
-    vanillaCount = static_cast<int>(vanillaEntries.size());
+        return std::unexpected("vanilla package missing or unreadable: " + vanillaPath.string());
+    const int vanillaCount = static_cast<int>(vanillaEntries.size());
 
     auto readFile = [](const std::filesystem::path &p) -> std::vector<uint8_t>
     {
@@ -127,11 +126,14 @@ bool buildCombinedFromFiles(const std::filesystem::path &outPath, const std::fil
     };
 
     const auto std_data = readFile(standardPath);
+    if (std_data.empty())
+        return std::unexpected("standard icon DDS missing or empty: " + standardPath.string());
     const auto prog_data = readFile(progressionPath);
+    if (prog_data.empty())
+        return std::unexpected("progression icon DDS missing or empty: " + progressionPath.string());
     const auto trap_data = readFile(trapPath);
-
-    if (std_data.empty() || prog_data.empty() || trap_data.empty())
-        return false;
+    if (trap_data.empty())
+        return std::unexpected("trap icon DDS missing or empty: " + trapPath.string());
 
     const std::array<std::span<const uint8_t>, 3> ddsBuffers = {std_data, prog_data, trap_data};
 
@@ -145,7 +147,9 @@ bool buildCombinedFromFiles(const std::filesystem::path &outPath, const std::fil
     for (const auto &e : kIconEntries)
         pkg.addEntry(ResourceType{'D', 'D', 'S', '\0'}, ddsBuffers[static_cast<size_t>(e.ddsIndex)]);
 
-    return pkg.write(outPath);
+    if (!pkg.write(outPath))
+        return std::unexpected("output write failed: " + outPath.string());
+    return vanillaCount;
 }
 
 } // namespace okami::customiconpkg

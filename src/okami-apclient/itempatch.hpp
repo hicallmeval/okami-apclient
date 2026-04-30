@@ -53,4 +53,16 @@ void clearContainerContext();
 /// Reset all dynamic state (custom strings, location index, shop context).
 /// For use in tests to prevent cross-test pollution.
 void resetState();
+
+/// True iff the combined icon package was successfully built during
+/// initializeEarly() — i.e. the game can render AP-dummy item types.
+/// Callers should substitute a vanilla item type (e.g. chestnut) when this
+/// returns false, otherwise the game's icon lookup walks off-table and
+/// crashes when the slot is rendered.
+bool hasCustomIcons();
+
+/// Test-only: override the cached icon-package state without re-running
+/// initializeEarly(). Used by ShopMan tests to exercise the
+/// "icons-failed-to-build" fallback branch.
+void setHasCustomIconsForTests(bool present);
 } // namespace itempatch
