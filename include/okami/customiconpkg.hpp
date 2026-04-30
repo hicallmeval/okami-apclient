@@ -65,8 +65,8 @@ inline constexpr std::string_view kPackageResourceName = "archipelago/customicon
 /// first custom entry in the combined package). On failure returns a string
 /// naming the specific input that couldn't be processed (vanilla DAT,
 /// individual DDS file, or output write), so the caller can log it.
-[[nodiscard]] std::expected<int, std::string>
-buildCombinedFromFiles(const std::filesystem::path &outPath, const std::filesystem::path &vanillaPath, const std::filesystem::path &standardPath,
-                       const std::filesystem::path &progressionPath, const std::filesystem::path &trapPath);
+[[nodiscard]] std::expected<int, std::string> buildCombinedFromFiles(const std::filesystem::path &outPath, const std::filesystem::path &vanillaPath,
+                                                                     const std::filesystem::path &standardPath, const std::filesystem::path &progressionPath,
+                                                                     const std::filesystem::path &trapPath);
 
 } // namespace okami::customiconpkg
