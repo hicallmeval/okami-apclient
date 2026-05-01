@@ -123,14 +123,22 @@ std::expected<void, RewardError> grant(int64_t apItemId)
         grantSimpleBrush(static_cast<int>(okami::BrushOverlay::sunrise_default));
     }
 
-    // Bloom (bit 4) is the bloom-circle ability. The two adjacent bits —
-    // greensprout (2) and dot_trees (3) — gate cursed-patch bloom and
+    // Bloom (bit 4) is the bloom-circle ability. The two adjacent bits --
+    // greensprout (2) and dot_trees (3) -- gate cursed-patch bloom and
     // tree-growing respectively, and the apworld doesn't ship them as
     // separate items. Vanilla Sakigami sets all three at once; mirror that.
     if (apItemId == 0x104) // Greensprout (Bloom)
     {
         grantSimpleBrush(static_cast<int>(okami::BrushOverlay::greensprout));
         grantSimpleBrush(static_cast<int>(okami::BrushOverlay::dot_trees));
+    }
+
+    // Vine (bit 19) is the swing ability. The adjacent vine_holy_smoke (20)
+    // gates the green-smoke effect on flowers, and the apworld doesn't
+    // distribute it separately. Mirror vanilla and set both. (#132)
+    if (apItemId == 0x113) // Greensprout (Vine)
+    {
+        grantSimpleBrush(static_cast<int>(okami::BrushOverlay::vine_holy_smoke));
     }
 
     return {};
