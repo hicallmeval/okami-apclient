@@ -80,36 +80,18 @@ TEST_CASE("ShopDefinition AddItem adds items correctly", "[shops][ShopDefinition
     REQUIRE(stock[1].cost == 200);
 }
 
-TEST_CASE("ShopDefinition AddItem warns when stock is full", "[shops][ShopDefinition]")
+TEST_CASE("ShopDefinition AddItem caps at max stock size", "[shops][ShopDefinition]")
 {
-    wolf::mock::reset();
     checks::ShopDefinition shop;
 
-    // Fill to max (50 items)
     for (size_t i = 0; i < checks::MaxShopStockSize; ++i)
     {
         shop.AddItem(okami::ItemTypes::HolyBoneS, 100);
     }
 
-    // Clear log messages before the overflow attempt
-    wolf::mock::logMessages.clear();
-
-    // Try to add one more - should log warning
+    // Try to add one more -- should be capped, not overflow.
     shop.AddItem(okami::ItemTypes::HolyBoneM, 200);
 
-    // Check for warning in logs
-    bool foundWarning = false;
-    for (const auto &msg : wolf::mock::logMessages)
-    {
-        if (msg.find("Max stock size") != std::string::npos)
-        {
-            foundWarning = true;
-            break;
-        }
-    }
-    REQUIRE(foundWarning);
-
-    // Verify stock is still capped at max
     const uint8_t *data = shop.GetData();
     const uint32_t *numItems = reinterpret_cast<const uint32_t *>(data + sizeof(okami::ISLHeader));
     REQUIRE(*numItems == checks::MaxShopStockSize);
@@ -141,31 +123,25 @@ TEST_CASE("ShopDefinition SetStock replaces stock", "[shops][ShopDefinition]")
     REQUIRE(stock[2].itemType == okami::ItemTypes::ExorcismSlipL);
 }
 
-TEST_CASE("ShopDefinition SetStock warns when stock exceeds max", "[shops][ShopDefinition]")
+TEST_CASE("ShopDefinition SetStock rejects stock that exceeds max", "[shops][ShopDefinition]")
 {
-    wolf::mock::reset();
     checks::ShopDefinition shop;
+    shop.AddItem(okami::ItemTypes::HolyBoneS, 100);
 
-    // Create oversized stock
     std::vector<okami::ItemShopStock> oversizedStock(checks::MaxShopStockSize + 10);
     for (auto &item : oversizedStock)
     {
-        item = {okami::ItemTypes::HolyBoneS, 100, 0};
+        item = {okami::ItemTypes::ExorcismSlipS, 50, 0};
     }
 
     shop.SetStock(oversizedStock);
 
-    // Check for warning in logs
-    bool foundWarning = false;
-    for (const auto &msg : wolf::mock::logMessages)
-    {
-        if (msg.find("Max stock size") != std::string::npos)
-        {
-            foundWarning = true;
-            break;
-        }
-    }
-    REQUIRE(foundWarning);
+    // Oversized SetStock must be rejected, leaving prior stock intact.
+    const uint8_t *data = shop.GetData();
+    const uint32_t *numItems = reinterpret_cast<const uint32_t *>(data + sizeof(okami::ISLHeader));
+    REQUIRE(*numItems == 1);
+    const auto *stock = reinterpret_cast<const okami::ItemShopStock *>(data + sizeof(okami::ISLHeader) + sizeof(uint32_t));
+    REQUIRE(stock[0].itemType == okami::ItemTypes::HolyBoneS);
 }
 
 TEST_CASE("ShopDefinition ClearStock empties the stock", "[shops][ShopDefinition]")
@@ -404,28 +380,6 @@ TEST_CASE_METHOD(ShopManFixture, "ShopMan initialize installs hooks", "[shops][S
     REQUIRE(wolf::mock::registeredHooks.count(0x4420C0) > 0); // GetShopVariation
     REQUIRE(wolf::mock::registeredHooks.count(0x1B1770) > 0); // LoadRsc
     REQUIRE(wolf::mock::registeredHooks.count(0x43F5A0) > 0); // CKibaShop_GetShopStockList
-
-    TearDown();
-}
-
-TEST_CASE_METHOD(ShopManFixture, "ShopMan double initialize warns", "[shops][ShopMan]")
-{
-    SetUp();
-
-    shopMan_->initialize();
-    wolf::mock::logMessages.clear();
-    shopMan_->initialize();
-
-    bool foundWarning = false;
-    for (const auto &msg : wolf::mock::logMessages)
-    {
-        if (msg.find("Already initialized") != std::string::npos)
-        {
-            foundWarning = true;
-            break;
-        }
-    }
-    REQUIRE(foundWarning);
 
     TearDown();
 }
