@@ -6,6 +6,7 @@
 
 #include "archipelagosocket.h"
 #include "checkman.h"
+#include "console_commands.h"
 #include "gamestate_accessors.hpp"
 #include "itempatch.hpp"
 #include "rewardman.h"
@@ -120,6 +121,11 @@ class APClientMod
 
         // Initialize check manager (sets up monitors and container hooks)
         g_checkMan->initialize();
+
+        // Register developer-console commands ("ap status", "ap say <...>",
+        // "ap give <id>"). Done after managers exist so the handlers can
+        // close over live references.
+        console_commands::registerAll(ArchipelagoSocket::instance(), *g_rewardMan);
 
         // Wire auto-save: queue save after each check is sent
         g_checkMan->setOnCheckSentCallback(

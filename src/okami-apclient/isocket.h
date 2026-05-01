@@ -38,6 +38,15 @@ class ISocket
     virtual void poll() = 0;
     virtual void processMainThreadTasks() = 0;
 
+    /**
+     * @brief Send a chat / slash-command message to the AP server.
+     *
+     * Server-side slash commands (e.g. "/help", "/players", "/missing") arrive
+     * in the same Say packet as plain chat -- the server distinguishes by the
+     * leading "/". Returns false if not connected; the message is dropped.
+     */
+    virtual bool say(const std::string &text) = 0;
+
     // Information queries
     virtual std::string getItemName(int64_t id, int player) const = 0;
     virtual std::string getItemDesc(int player) const = 0;

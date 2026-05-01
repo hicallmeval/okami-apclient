@@ -58,6 +58,19 @@ void MockArchipelagoSocket::gameFinished()
     }
 }
 
+bool MockArchipelagoSocket::say(const std::string &text)
+{
+    if (state_ != ConnectionState::Connected)
+        return false;
+    saidMessages_.push_back(text);
+    return true;
+}
+
+const std::vector<std::string> &MockArchipelagoSocket::getSaidMessages() const
+{
+    return saidMessages_;
+}
+
 void MockArchipelagoSocket::poll()
 {
     pollCount_++;

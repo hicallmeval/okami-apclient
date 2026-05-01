@@ -6,6 +6,7 @@ set(okami-apclient_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/checks/containers.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/checks/gamestate_monitors.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/checks/shops.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/console_commands.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/data/blowfish.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/data/customiconpkg.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/data/custommodelpkg.cpp
