@@ -31,7 +31,7 @@ constexpr uintptr_t ITEM_SHOP_IS_PURCHASED_OFFSET = 0x43bae0;
 constexpr uintptr_t ITEM_SHOP_BUY_QTY_DIALOG_OFFSET = 0x43d060;
 constexpr uintptr_t EXTERIOR_MAP_ID_OFFSET = 0xB6B240;
 
-// Shop struct offsets (from cShopBase) — validated against decompiled
+// Shop struct offsets (from cShopBase) -- validated against decompiled
 // FUN_18043ca30 (cItemShop::PurchaseItem) which reads param_1+0x8A/0x8B.
 constexpr uintptr_t SHOP_SCROLL_OFFSET = 0x8A;
 constexpr uintptr_t SHOP_VISUAL_SELECT_INDEX = 0x8B;
@@ -424,7 +424,7 @@ void ShopMan::scoutShopsForMap(uint16_t mapId)
 
 // When the combined icon package isn't available, AP-dummy item types have no
 // vanilla icon-table entry and rendering them crashes the game. Substitute a
-// vanilla item type that has an icon — chestnut (the same value we redirect
+// vanilla item type that has an icon -- chestnut (the same value we redirect
 // to in itempatch::hookBuildItemResourceName for the matching model crash).
 constexpr okami::ItemTypes::Enum kIconlessFallback = static_cast<okami::ItemTypes::Enum>(0x83);
 
@@ -435,7 +435,7 @@ okami::ItemTypes::Enum selectShopItemType(const ScoutedItem &scouted, int mySlot
     const bool isNative = !rewards::isForeignItem(scouted.player, mySlot);
 
     // Native, directly displayable item: pass through. Independent of icon
-    // package state — this branch never produces a dummy type.
+    // package state -- this branch never produces a dummy type.
     if (isNative && rewards::game_items::isDirectGameItem(scouted.item))
     {
         const int rawItem = rewards::game_items::getItemId(scouted.item);
@@ -667,7 +667,7 @@ void __fastcall ShopMan::hookCItemShop_PurchaseItem(void *pShop)
 
     // For AP shops, "No" in the confirmation dialog tries to go back to state 4
     // (quantity dialog). Since we skip state 4 entirely, redirect to state 3
-    // (browse) instead to avoid a 4→5→4→5 infinite loop.
+    // (browse) instead to avoid a 4->5->4->5 infinite loop.
     if (stateAfter == 4 && activeInstance_ && activeInstance_->currentShopId_ >= 0 && activeInstance_->socket_.getSlotConfig().randomizeShops)
     {
         shopBase[SHOP_OUTER_STATE] = 3;
@@ -807,8 +807,8 @@ void __fastcall ShopMan::hookBuyQtyDialog(void *pShop)
     if (activeInstance_ && activeInstance_->currentShopId_ >= 0 && activeInstance_->socket_.getSlotConfig().randomizeShops)
     {
         auto *shopBase = reinterpret_cast<uint8_t *>(pShop);
-        shopBase[SHOP_OUTER_STATE] = 5; // outer state → 5 (purchase confirmation)
-        shopBase[SHOP_SUB_STATE] = 0;   // sub-state → 0 (init)
+        shopBase[SHOP_OUTER_STATE] = 5; // outer state -> 5 (purchase confirmation)
+        shopBase[SHOP_SUB_STATE] = 0;   // sub-state -> 0 (init)
         return;
     }
 

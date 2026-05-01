@@ -21,7 +21,7 @@ constexpr uint32_t kMeshType = 0x14; // static entity
 
 constexpr uint32_t kSubMeshCount = 6;
 constexpr uint16_t kVerticesPerFace = 4;
-constexpr float kHalfExtent = 5.0f; // half-width of the cube (±5 units = 10×10×10)
+constexpr float kHalfExtent = 5.0f; // half-width of the cube (+/-5 units = 10x10x10)
 
 #pragma pack(push, 1)
 
@@ -83,7 +83,7 @@ struct MdTransform
 
 #pragma pack(pop)
 
-// Face vertex definitions for a box (±15.0 units), 4 vertices per face as triangle strips.
+// Face vertex definitions for a box (+/-15.0 units), 4 vertices per face as triangle strips.
 struct FaceVerts
 {
     float v[4][3];
@@ -238,7 +238,7 @@ static std::vector<uint8_t> generateBoxMD(uint8_t r, uint8_t g, uint8_t b)
 
         alignBuffer(buf, kAlignment);
 
-        // Texture map UVs (zeroed — no texture, vertex colors only)
+        // Texture map UVs (zeroed -- no texture, vertex colors only)
         for (uint16_t v = 0; v < kVerticesPerFace; v++)
         {
             TextureMap tm{};
@@ -262,7 +262,7 @@ static std::vector<uint8_t> generateBoxMD(uint8_t r, uint8_t g, uint8_t b)
 
         alignBuffer(buf, kAlignment);
 
-        // SUBMESH_ALIGNMENT — already aligned
+        // SUBMESH_ALIGNMENT -- already aligned
     }
 
     // ------ 8. Mesh alignment ------

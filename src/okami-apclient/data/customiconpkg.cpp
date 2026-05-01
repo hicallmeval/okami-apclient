@@ -23,7 +23,7 @@ struct RawEntry
 /// Returns an empty vector on any read or format error.
 static std::vector<RawEntry> readPackageEntries(const std::filesystem::path &path)
 {
-    // BlowFish::Create is idempotent with the same key — safe to call multiple times.
+    // BlowFish::Create is idempotent with the same key -- safe to call multiple times.
     Nippon::BlowFish::Create(std::string(Nippon::kCipherKey));
 
     std::ifstream f(path, std::ios::binary | std::ios::ate);

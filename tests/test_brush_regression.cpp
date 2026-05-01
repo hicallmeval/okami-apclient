@@ -7,7 +7,7 @@
 //     game reads. The game uses LSB-first-within-byte indexing on the brush
 //     bitfield (`bytes[idx/8] & (1 << (idx%8))`), which differs from
 //     BitField<N>'s MSB-first-within-32-bit-word convention. A previous fix
-//     using BitField::Set silently set the wrong bits — Rejuvenation (idx 22)
+//     using BitField::Set silently set the wrong bits -- Rejuvenation (idx 22)
 //     was landing at vine_base (idx 19), Power Slash (idx 12) at thunderbolt
 //     (idx 9). The "Self-consistent IsSet/Set" tests passed despite this.
 //     Here we assert raw byte/mask values to lock the convention.
@@ -94,7 +94,7 @@ TEST_CASE_METHOD(BrushFixture, "Granting Rejuvenation sets byte 2 mask 0x40", "[
     CHECK(src[3] == 0x00);
 
     // Old buggy code (BitField::Set) wrote 0x80000000>>22 = 0x200, landing as
-    // byte 1 mask 0x02 — that's vine_base/thunderbolt/etc, not rejuvenation.
+    // byte 1 mask 0x02 -- that's vine_base/thunderbolt/etc, not rejuvenation.
     // Assert we did NOT regress.
     CHECK((src[1] & 0x02) == 0);
 
@@ -296,7 +296,7 @@ TEST_CASE_METHOD(BrushFixture, "Grant writes both BrushData source and WorldStat
 // Celestial Brush Locked is cleared by BrushMan::tick() (per-tick gate clear)
 //
 // On a fresh playthrough, the game sets the "Celestial Brush Locked" bit
-// AFTER the post-load grant phase — during the intro→River-of-the-Heavens
+// AFTER the post-load grant phase -- during the intro->River-of-the-Heavens
 // scene transition. A clear that fires only at grant time runs too early and
 // leaves the player permanently locked out of the brush UI for the rest of
 // the session. The fix is a per-tick clear in BrushMan::tick() called from
@@ -363,7 +363,7 @@ TEST_CASE("BrushMan::tick is a no-op when uninitialized", "[brush][regression][u
     apgame::initialize();
 
     checks::BrushMan brushMan([](int64_t) {}, [](int64_t) { return true; });
-    // Don't initialize — simulates a teardown/before-init state.
+    // Don't initialize -- simulates a teardown/before-init state.
 
     apgame::worldStateData->mapStateBits[0].Set(10);
     brushMan.tick();
@@ -378,9 +378,9 @@ TEST_CASE("BrushMan::tick is a no-op when uninitialized", "[brush][regression][u
 //
 // brushUpgrades is a TrackerData BitField<32>. The game queries it via the
 // BitField API (MSB-first within each 32-bit word), and per
-// okami::game_state::global::brushUpgrades the upgrade index → label
+// okami::game_state::global::brushUpgrades the upgrade index -> label
 // dictionary is {0: "Power Slash 2", 6: "Cherry Bomb 2", 10: "Power Slash 3",
-// 11: "Cherry Bomb 3"} — those keys are BitField indices, not LSB-first
+// 11: "Cherry Bomb 3"} -- those keys are BitField indices, not LSB-first
 // byte indices. So the upgrade flags we set must be readable via
 // `apgame::brushUpgrades->IsSet(N)` for the same N the game checks.
 // ============================================================================
@@ -398,7 +398,7 @@ TEST_CASE_METHOD(BrushFixture, "Power Slash progression: base, then upgrades 0 a
     CHECK_FALSE(apgame::brushUpgrades->IsSet(0));  // Power Slash 2
     CHECK_FALSE(apgame::brushUpgrades->IsSet(10)); // Power Slash 3
 
-    // 2nd grant: Power Slash 2 — must land at the bit the game reads.
+    // 2nd grant: Power Slash 2 -- must land at the bit the game reads.
     REQUIRE(rewardMan_->grantReward(kPowerSlashApId).has_value());
     CHECK(apgame::brushUpgrades->IsSet(0));
     CHECK_FALSE(apgame::brushUpgrades->IsSet(10));
@@ -407,7 +407,7 @@ TEST_CASE_METHOD(BrushFixture, "Power Slash progression: base, then upgrades 0 a
     REQUIRE(rewardMan_->grantReward(kPowerSlashApId).has_value());
     CHECK(apgame::brushUpgrades->IsSet(10));
 
-    // 4th grant: max level — succeeds as no-op.
+    // 4th grant: max level -- succeeds as no-op.
     REQUIRE(rewardMan_->grantReward(kPowerSlashApId).has_value());
 
     tearDown();
@@ -550,7 +550,7 @@ TEST_CASE_METHOD(BrushManFixture, "BrushMan: already-obtained bit still queues a
     // Precollected brushes pre-set the obtained bit, so when the player
     // later triggers the in-game constellation, the dispatcher must still
     // send the location check (the location belongs to the apworld and its
-    // item hasn't been collected yet) — but it should NOT block the game's
+    // item hasn't been collected yet) -- but it should NOT block the game's
     // set-bit operation, since blocking a redundant set has no effect and
     // might suppress unrelated side effects in the game's set path.
     setUp();
@@ -569,7 +569,7 @@ TEST_CASE_METHOD(BrushManFixture, "BrushMan: already-obtained bit still queues a
 
 TEST_CASE_METHOD(BrushManFixture, "BrushMan: bit with no APWorld location is full passthrough", "[brush][regression][brushman][gating]")
 {
-    // The Sakigami constellation sets bits 2, 3, and 4 — but only bit 4
+    // The Sakigami constellation sets bits 2, 3, and 4 -- but only bit 4
     // (Bloom) corresponds to an APWorld location. Bits 2 and 3 must pass
     // through to the game so the player keeps the Greensprout / DotTrees
     // sub-abilities; otherwise we strip them without an AP item in return.
@@ -579,17 +579,17 @@ TEST_CASE_METHOD(BrushManFixture, "BrushMan: bit with no APWorld location is ful
 
     setUp();
 
-    // Bit 2 (greensprout) — no AP location → pass through, no check.
+    // Bit 2 (greensprout) -- no AP location -> pass through, no check.
     CHECK_FALSE(wolf::mock::triggerBrushEdit(2, 0));
-    // Bit 3 (dot_trees) — no AP location → pass through, no check.
+    // Bit 3 (dot_trees) -- no AP location -> pass through, no check.
     CHECK_FALSE(wolf::mock::triggerBrushEdit(3, 0));
-    // Bit 1 (sunrise_default) — no AP location → pass through, no check.
+    // Bit 1 (sunrise_default) -- no AP location -> pass through, no check.
     CHECK_FALSE(wolf::mock::triggerBrushEdit(1, 0));
 
     brushMan_->tick();
     CHECK(sentChecks_.empty());
 
-    // Bit 4 (Bloom) — has AP location → block + queue check.
+    // Bit 4 (Bloom) -- has AP location -> block + queue check.
     CHECK(wolf::mock::triggerBrushEdit(4, 0));
     brushMan_->tick();
     REQUIRE(sentChecks_.size() == 1);

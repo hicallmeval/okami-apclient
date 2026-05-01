@@ -253,144 +253,144 @@ inline static const std::unordered_map<uint16_t, std::string> MapNames = {
     {::MapID::MoonCaveEntrancePast, "Moon Cave Entrance - Past"},
 };
 
-/// @brief Map ID → save-slot areaNameID (0x00–0x35).
+/// @brief Map ID -> save-slot areaNameID (0x00-0x35).
 /// The areaNameID is shown on the title-screen continue slot.
 /// Values sourced from OriginEdit (Shintensu) and the speedruns wiki.
 /// Maps not in the table get 0x35 ("Start from beginning").
 inline static const std::unordered_map<uint16_t, uint32_t> MapToAreaNameID = {
-    // Kamiki Village variants → 0x00
+    // Kamiki Village variants -> 0x00
     {::MapID::KamikiVillageCursed, 0x00},
     {::MapID::CaveofNagi, 0x00},
     {::MapID::KamikiVillage, 0x00},
     {::MapID::KamikiVillagePostTei, 0x00},
-    // Shinshu Field → 0x01
+    // Shinshu Field -> 0x01
     {::MapID::ShinshuFieldCursed, 0x01},
     {::MapID::ShinshuFieldHealed, 0x01},
-    // Agata Forest → 0x02
+    // Agata Forest -> 0x02
     {::MapID::AgataForestCursed, 0x02},
     {::MapID::AgataForestHealed, 0x02},
     {::MapID::AgataForestMadameFawnsHouse, 0x02},
-    // Taka Pass → 0x03
+    // Taka Pass -> 0x03
     {::MapID::TakaPassCursed, 0x03},
     {::MapID::TakaPassHealed, 0x03},
     {::MapID::TakaPassStrayBead26Cave, 0x03},
-    // Kusa Village → 0x04
+    // Kusa Village -> 0x04
     {::MapID::KusaVillage, 0x04},
-    // Sasa Sanctuary → 0x05
+    // Sasa Sanctuary -> 0x05
     {::MapID::SasaSanctuary, 0x05},
-    // City Checkpoint → 0x06
+    // City Checkpoint -> 0x06
     {::MapID::CityCheckpoint, 0x06},
-    // Ryoshima Coast → 0x07
+    // Ryoshima Coast -> 0x07
     {::MapID::RyoshimaCoastCursed, 0x07},
     {::MapID::RyoshimaCoastHealed, 0x07},
     {::MapID::RyoshimaCoastBanditSpiderArena, 0x07},
-    // N. Ryoshima Coast → 0x08
+    // N. Ryoshima Coast -> 0x08
     {::MapID::NRyoshimaCoast, 0x08},
     {::MapID::NorthRyoshimaCoastPowerSlash2Cave, 0x08},
     {::MapID::NorthRyoshimaCoastCherryBomb2Cave, 0x08},
     {::MapID::NorthRyoshimaCoastBanditSpiderArena, 0x08},
     {::MapID::NorthRyoshimaCoastStrayBeadCave, 0x08},
-    // Dragon Palace → 0x09
+    // Dragon Palace -> 0x09
     {::MapID::DragonPalace, 0x09},
     {::MapID::DragonPalaceStrayBeadCave, 0x09},
-    // Kamui → 0x0A
+    // Kamui -> 0x0A
     {::MapID::KamuiCursed, 0x0A},
     {::MapID::KamuiHealed, 0x0A},
     {::MapID::KamuiCherryBomb3Cave, 0x0A},
     {::MapID::KamuiPowerSlash3Cave, 0x0A},
     {::MapID::KamuiBlockheadGrandeCave, 0x0A},
     {::MapID::KamuiBanditSpiderArena, 0x0A},
-    // Wep'keer → 0x0B
+    // Wep'keer -> 0x0B
     {::MapID::Wepkeer, 0x0B},
     {::MapID::WepkeerSquare, 0x0B},
-    // N. Ryoshima Coast (Rocky Area) → 0x0C (reuse NRyoshima sub-areas)
-    // Kamui (Ezofuji Rocky Area) → 0x0D
-    // Inner Yoshpet → 0x0E
+    // N. Ryoshima Coast (Rocky Area) -> 0x0C (reuse NRyoshima sub-areas)
+    // Kamui (Ezofuji Rocky Area) -> 0x0D
+    // Inner Yoshpet -> 0x0E
     {::MapID::InnerYoshpet, 0x0E},
-    // River of the Heavens → 0x0F
+    // River of the Heavens -> 0x0F
     {::MapID::RiveroftheHeavens, 0x0F},
-    // Inner Hana Valley → 0x10
-    // Tsuta Ruins → 0x11
+    // Inner Hana Valley -> 0x10
+    // Tsuta Ruins -> 0x11
     {::MapID::TsutaRuins, 0x11},
     {::MapID::TsutaRuinsSpiderQueenArena, 0x11},
-    // Gale Shrine → 0x12
+    // Gale Shrine -> 0x12
     {::MapID::GaleShrine, 0x12},
     {::MapID::GaleShrineCrimsonHelmArena, 0x12},
-    // Moon Cave → 0x13
+    // Moon Cave -> 0x13
     {::MapID::MoonCaveInterior, 0x13},
     {::MapID::MoonCaveStaircaseAndOrochiArena, 0x13},
-    // Sei-an City (Commoners' Qtr.) → 0x14
+    // Sei-an City (Commoners' Qtr.) -> 0x14
     {::MapID::SeianCityCommonersQuarter, 0x14},
     {::MapID::SeianCityCommonersQuarterKimonoShop, 0x14},
-    // Sunken Ship → 0x15
+    // Sunken Ship -> 0x15
     {::MapID::SunkenShip, 0x15},
-    // Imperial Palace → 0x16
+    // Imperial Palace -> 0x16
     {::MapID::ImperialPalaceAmmySize, 0x16},
     {::MapID::ImperialPalaceIssunSize, 0x16},
     {::MapID::ImperialPalaceBlightArena, 0x16},
-    // Inside the Dragon → 0x17
+    // Inside the Dragon -> 0x17
     {::MapID::InsidetheDragon, 0x17},
-    // Oni Island (Interior/1F) → 0x18
+    // Oni Island (Interior/1F) -> 0x18
     {::MapID::OniIslandLowerInterior, 0x18},
-    // Kamiki Village (past) → 0x19
+    // Kamiki Village (past) -> 0x19
     {::MapID::KamikiVillagePast, 0x19},
-    // Moon Cave Entrance → 0x1A
+    // Moon Cave Entrance -> 0x1A
     {::MapID::MoonCaveEntrance, 0x1A},
     {::MapID::MoonCaveEntrancePast, 0x1A},
-    // Wawku Shrine → 0x1B
+    // Wawku Shrine -> 0x1B
     {::MapID::WawkuShrine, 0x1B},
     {::MapID::WawkuShrineNechkuArena, 0x1B},
-    // Agata Forest (past) → 0x1C  (shares name with 0x02 but distinct ID)
-    // Kamiki Village (past variant) → 0x1D
-    // Gale Shrine (variant) → 0x1E
-    // Imperial Palace (variant) → 0x1F
-    // N. Ryoshima Coast (variant) → 0x20
-    // Yoshpet → 0x21
+    // Agata Forest (past) -> 0x1C  (shares name with 0x02 but distinct ID)
+    // Kamiki Village (past variant) -> 0x1D
+    // Gale Shrine (variant) -> 0x1E
+    // Imperial Palace (variant) -> 0x1F
+    // N. Ryoshima Coast (variant) -> 0x20
+    // Yoshpet -> 0x21
     {::MapID::Yoshpet, 0x21},
-    // Kamui (Ezofuji) → 0x22
+    // Kamui (Ezofuji) -> 0x22
     {::MapID::KamuiEzofuji, 0x22},
-    // Tsuta Ruins (Mid.) → 0x23
-    // Tsuta Ruins (Deep) → 0x24
-    // Gale Shrine (Deep) → 0x25
-    // Emperor's Body → 0x26
-    // Oni Island (Interior/4F) → 0x27
+    // Tsuta Ruins (Mid.) -> 0x23
+    // Tsuta Ruins (Deep) -> 0x24
+    // Gale Shrine (Deep) -> 0x25
+    // Emperor's Body -> 0x26
+    // Oni Island (Interior/4F) -> 0x27
     {::MapID::OniIslandNinetailsArena, 0x27},
-    // Wawku Shrine (Mid.) → 0x28
-    // Wawku Shrine (Deep) → 0x29
+    // Wawku Shrine (Mid.) -> 0x28
+    // Wawku Shrine (Deep) -> 0x29
     {::MapID::WawkuShrineLechkuAndNechkuArena, 0x29},
-    // Ark of Yamato → 0x2A
+    // Ark of Yamato -> 0x2A
     {::MapID::ArkofYamato, 0x2A},
     {::MapID::ArkofYamatoOrochiArena, 0x2A},
     {::MapID::ArkofYamatoBlightArena, 0x2A},
     {::MapID::ArkofYamatoNinetailsArena, 0x2A},
     {::MapID::ArkofYamatoCrimsonHelmArena, 0x2A},
     {::MapID::ArkofYamatoYamiArena, 0x2A},
-    // Oni Island (High) → 0x2B
+    // Oni Island (High) -> 0x2B
     {::MapID::OniIslandExterior, 0x2B},
     {::MapID::OniIslandUpperInterior, 0x2B},
     {::MapID::OniIslandSidescroller, 0x2B},
-    // Ponc'tan → 0x2C
+    // Ponc'tan -> 0x2C
     {::MapID::Ponctan, 0x2C},
     {::MapID::PonctanMrsSealsHouse, 0x2C},
-    // Hana Valley → 0x2D
+    // Hana Valley -> 0x2D
     {::MapID::HanaValley, 0x2D},
-    // Catcall Tower → 0x2E
+    // Catcall Tower -> 0x2E
     {::MapID::CatcallTower, 0x2E},
-    // Yoshpet (variant) → 0x2F
-    // Kamui (Inner Ezofuji) → 0x30
-    // Himiko's Palace → 0x31
+    // Yoshpet (variant) -> 0x2F
+    // Kamui (Inner Ezofuji) -> 0x30
+    // Himiko's Palace -> 0x31
     {::MapID::SeianCityAristocraticQuarterHimikosPalace, 0x31},
-    // Sei-an City (Aristocratic Qtr.) → 0x32
+    // Sei-an City (Aristocratic Qtr.) -> 0x32
     {::MapID::SeianCityAristocraticQuarter, 0x32},
-    // Oni Island (Interior/3F) → 0x33
-    // Kamui (Ezofuji) variant → 0x34
-    // Moon Cave (Past) → use 0x13
+    // Oni Island (Interior/3F) -> 0x33
+    // Kamui (Ezofuji) variant -> 0x34
+    // Moon Cave (Past) -> use 0x13
     {::MapID::MoonCavePast, 0x13},
-    // Shinshu Field (Past) → 0x01
+    // Shinshu Field (Past) -> 0x01
     {::MapID::ShinshuFieldPast, 0x01},
-    // Calcified Cavern → 0x02 (in Agata)
+    // Calcified Cavern -> 0x02 (in Agata)
     {::MapID::CalcifiedCavern, 0x02},
-    // Digging Minigame / Dojo → use parent area
+    // Digging Minigame / Dojo -> use parent area
     {::MapID::DiggingMinigame, 0x01},
     {::MapID::OnigiriDojoLessonRoom, 0x01},
 };

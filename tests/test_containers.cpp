@@ -205,13 +205,10 @@ TEST_CASE_METHOD(ContainerManFixture, "Hook skips entries with null spawn_data",
     okami::SpawnTable table{};
     table.entries[0].flags = 1;
     table.entries[0].spawn_type_1 = 1;
-    table.entries[0].spawn_data = nullptr; // No spawn data
+    table.entries[0].spawn_data = nullptr;
 
     containerMan_->initialize();
-    triggerSpawnTableHook(&table);
-
-    // Should not crash, entry should be skipped
-    REQUIRE(true);
+    REQUIRE_NOTHROW(triggerSpawnTableHook(&table));
 
     TearDown();
 }

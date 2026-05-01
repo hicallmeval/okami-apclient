@@ -154,7 +154,7 @@ void ContainerMan::onSpawnTablePopulate(void *spawnTable)
 
         if (it == scoutedItems_.end())
         {
-            // No scouted data — fallback to chestnut
+            // No scouted data -- fallback to chestnut
             containerData->item_id = DUMMY_ITEM_ID;
             pendingContainerItems_[containerData->item_id]++;
             wolf::logDebug("[ContainerMan] Container %d: no scout data, using fallback dummy 0x%02X", i, DUMMY_ITEM_ID);
@@ -169,7 +169,7 @@ void ContainerMan::onSpawnTablePopulate(void *spawnTable)
 
             if (isNative && rewards::game_items::isDirectGameItem(scouted.item))
             {
-                // Native direct game item — use actual game item ID for vanilla 3D model
+                // Native direct game item -- use actual game item ID for vanilla 3D model
                 gameItem = static_cast<okami::ItemTypes::Enum>(rewards::game_items::getItemId(scouted.item));
                 wolf::logDebug("[ContainerMan] Container %d: native AP item %" PRId64 " -> game item %d", i, scouted.item, static_cast<int>(gameItem));
             }
@@ -191,7 +191,7 @@ void ContainerMan::onSpawnTablePopulate(void *spawnTable)
             }
             else
             {
-                // Foreign item — select AP dummy type based on classification flags
+                // Foreign item -- select AP dummy type based on classification flags
                 if (rewards::isTrap(scouted.flags))
                     gameItem = okami::ItemTypes::ForeignTrapItem;
                 else if (rewards::isProgression(scouted.flags))

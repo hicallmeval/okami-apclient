@@ -1,6 +1,7 @@
 #include "checkman.h"
 
 #include <cinttypes>
+#include <unordered_set>
 
 #include "checks/brushes.hpp"
 #include "checks/containers.hpp"
@@ -35,10 +36,10 @@ void CheckMan::initialize()
     auto callback = [this](int64_t checkId) { sendCheck(checkId); };
 
     // Gamestate bitfield monitors (gameProgress, globalFlags, worldState,
-    // collectedObjects, areasRestored) are disabled for now — they fire
+    // collectedObjects, areasRestored) are disabled for now -- they fire
     // frequently and aren't consumed by the APWorld yet.
 
-    // Always create BrushMan here — initialize() registers a wolf callback,
+    // Always create BrushMan here -- initialize() registers a wolf callback,
     // which takes g_CallbackMutex. Doing this from poll() would deadlock
     // because the game-tick dispatcher holds that same mutex across user
     // callbacks. The hook stays inactive (no-op) until setActive(true).
@@ -173,32 +174,19 @@ void CheckMan::clearSentChecks()
 
 void CheckMan::syncWithServer(const std::list<int64_t> &serverCheckedLocations)
 {
-    // Add server-confirmed checks to local cache
-    for (int64_t loc : serverCheckedLocations)
-    {
-        sentChecks_.insert(loc);
-    }
+    const std::unordered_set<int64_t> serverSet(serverCheckedLocations.begin(), serverCheckedLocations.end());
 
-    // Find checks we have locally but server doesn't know about
+    sentChecks_.insert(serverSet.begin(), serverSet.end());
+
     std::vector<int64_t> toResend;
     for (int64_t loc : sentChecks_)
     {
-        bool foundOnServer = false;
-        for (int64_t serverLoc : serverCheckedLocations)
-        {
-            if (serverLoc == loc)
-            {
-                foundOnServer = true;
-                break;
-            }
-        }
-        if (!foundOnServer)
+        if (!serverSet.contains(loc))
         {
             toResend.push_back(loc);
         }
     }
 
-    // Resend missing checks
     if (!toResend.empty() && socket_.isConnected())
     {
         wolf::logInfo("[CheckMan] Resending %zu checks not confirmed by server", toResend.size());

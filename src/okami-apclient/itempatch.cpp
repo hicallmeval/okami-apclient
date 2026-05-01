@@ -60,7 +60,7 @@ static int s_customIconBase = -1;
 
 constexpr int16_t kCustomStringBase = 0x1000;
 // Key: virtual index. Value: encoded UTF-16 string.
-// std::unordered_map guarantees reference stability on insert — data() pointers remain valid.
+// std::unordered_map guarantees reference stability on insert -- data() pointers remain valid.
 static std::unordered_map<int16_t, std::vector<uint16_t>> s_customStrings;
 static std::unordered_map<int64_t, int16_t> s_locationIndex;
 static int16_t s_nextCustomIndex = kCustomStringBase;
@@ -114,7 +114,7 @@ static int64_t __fastcall hookGetNumEntries(void *pMgr, int32_t texGroup)
 static void *__fastcall hookLoadRscPkgAsync(void *pFs, const char *pszFilename, void **pOutputRscData, void *pHeap, int32_t a5, int32_t a6, int32_t a7,
                                             int32_t a8)
 {
-    // Redirect the vanilla icon package to our combined package (single async load —
+    // Redirect the vanilla icon package to our combined package (single async load --
     // adding a second pending load hangs the game indefinitely).
     if (pszFilename && std::strcmp(pszFilename, "id/ItemShopBuyIcon.dat") == 0 && s_customIconBase >= 0)
     {
@@ -213,7 +213,7 @@ static void __fastcall hookLoadCore20MSD(void *pMsgStruct)
     s_msdManager.OverrideString(okami::ItemTypes::Yen500 + ItemStrBaseID, "500 Yen");
     s_msdManager.OverrideString(okami::ItemTypes::Praise + ItemStrBaseID, "Praise");
 
-    // AP dummy item names — Foreign types (other player's items)
+    // AP dummy item names -- Foreign types (other player's items)
     s_msdManager.OverrideString(okami::ItemTypes::ForeignStandardItem + ItemStrBaseID, "Archipelago Item");
     s_msdManager.OverrideString(okami::ItemTypes::ForeignProgressionItem + ItemStrBaseID, "Archipelago Progression");
     s_msdManager.OverrideString(okami::ItemTypes::ForeignTrapItem + ItemStrBaseID, "Archipelago Trap");
@@ -410,7 +410,7 @@ void registerScoutedItemName(int64_t locationId, const std::string &name)
 {
     if (s_nextCustomIndex >= INT16_MAX)
     {
-        wolf::logError("[itempatch] Custom string index overflow — too many scouted items registered");
+        wolf::logError("[itempatch] Custom string index overflow -- too many scouted items registered");
         return;
     }
 
@@ -492,7 +492,7 @@ void initialize()
 
         for (uint8_t id : kDummyItemIds)
         {
-            // Each table entry = 3 × uint32_t (12 bytes); flags is the first uint32.
+            // Each table entry = 3 x uint32_t (12 bytes); flags is the first uint32.
             uintptr_t flagsAddr = mainBase + kItemFlagsTableOffset + static_cast<uintptr_t>(id) * 12;
             if (wolf::writeMemory(flagsAddr, &kCollectableFlags, sizeof(kCollectableFlags)))
                 wolf::logDebug("[itempatch] Patched item flags for ID 0x%02X at 0x%zX", id, flagsAddr);

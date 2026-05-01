@@ -71,7 +71,7 @@ okami::ItemShopStock *GetCurrentDemonFangShopData(uint16_t mapId, uint32_t *pNum
 /// so the icon-package hook can render the AP icon and the MSD hook can swap
 /// in the scouted name. When `hasCustomIcons` is false (combined icon package
 /// failed to build), those same dummy types would walk off the vanilla icon
-/// table and crash the game on render — substitute a vanilla item so the slot
+/// table and crash the game on render -- substitute a vanilla item so the slot
 /// is still purchasable.
 [[nodiscard]] okami::ItemTypes::Enum selectShopItemType(const ScoutedItem &scouted, int mySlot, bool hasCustomIcons);
 

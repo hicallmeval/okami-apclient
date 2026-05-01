@@ -30,7 +30,7 @@ constexpr std::array<uint32_t, 2> kCherryBombUpgrades = {6, 11};
 // semantics: bit X means `bytes[X/8] & (1 << (X%8))`. These helpers preserve
 // that convention.
 //
-// brushUpgrades (TrackerData) is different — the game queries it via the
+// brushUpgrades (TrackerData) is different -- the game queries it via the
 // BitField<32> API (MSB-first within each 32-bit word), so its callers go
 // through `apgame::brushUpgrades->IsSet/Set` directly, not these helpers.
 template <typename Accessor> void setGameBit(Accessor &accessor, unsigned int bitIdx)

@@ -41,8 +41,6 @@ struct SlotConfig
 
     int shopSlots = 6;
 
-    // bool skipCutscenes = false;
-
     /**
      * @brief Parse slot_data JSON into a SlotConfig
      *

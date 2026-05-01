@@ -12,7 +12,7 @@
 
 // ============================================================================
 // MSD binary blob tests
-// These tests do NOT require mock memory — MSDManager is pure data manipulation.
+// These tests do NOT require mock memory -- MSDManager is pure data manipulation.
 // ============================================================================
 
 TEST_CASE("MSDManager: AddString encodes and stores a string", "[msd][blob]")
@@ -97,7 +97,7 @@ TEST_CASE("MSDManager: OverrideString replaces string in rebuilt binary", "[msd]
     mgr.ReadMSD(msdData.data());
     REQUIRE(mgr.Size() == 2);
 
-    // Override string 0 with "A" — 'A' maps to 23
+    // Override string 0 with "A" -- 'A' maps to 23
     mgr.OverrideString(0, "A");
 
     const uint8_t *out = mgr.GetData();
@@ -177,7 +177,7 @@ TEST_CASE("MSDManager: OverrideString at invalid index is a no-op", "[msd][blob]
     mgr.AddString("OnlyEntry");
     REQUIRE(mgr.Size() == 1);
 
-    // Index 100 is out of bounds — should silently return with no crash
+    // Index 100 is out of bounds -- should silently return with no crash
     mgr.OverrideString(100, "test");
 
     const uint8_t *data = mgr.GetData();
@@ -327,7 +327,7 @@ TEST_CASE("hookGetNumEntries: returns 300 for texGroup 4", "[itempatch][hooks]")
     REQUIRE(fn(nullptr, 4) == 300);
 }
 
-TEST_CASE_METHOD(ItemParamFixture, "patchItemParams: idempotent — calling twice does not change categories", "[itempatch][ItemParam]")
+TEST_CASE_METHOD(ItemParamFixture, "patchItemParams: idempotent -- calling twice does not change categories", "[itempatch][ItemParam]")
 {
     itempatch::patchItemParams();
     itempatch::patchItemParams();
@@ -344,7 +344,7 @@ TEST_CASE_METHOD(ItemParamFixture, "patchItemParams: idempotent — calling twic
 // These tests do NOT require mock memory or MSD state.
 // ============================================================================
 
-TEST_CASE("registerScoutedItemName: idempotent — second call for same location is no-op", "[itempatch][live]")
+TEST_CASE("registerScoutedItemName: idempotent -- second call for same location is no-op", "[itempatch][live]")
 {
     // Can be called any time, before or after initialize()
     REQUIRE_NOTHROW(itempatch::registerScoutedItemName(1001, "Boomerang"));
@@ -515,7 +515,7 @@ TEST_CASE_METHOD(ShopContextFixture, "resolveApItemName: returns nullptr when no
     itempatch::registerScoutedItemName(locId, "Bombs");
     selectSlot(0, 0);
 
-    // Clear shop context — should fall through
+    // Clear shop context -- should fall through
     itempatch::clearShopContext();
 
     REQUIRE(itempatch::resolveApItemName(414) == nullptr);  // info panel strId
