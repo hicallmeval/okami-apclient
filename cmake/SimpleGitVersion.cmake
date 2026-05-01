@@ -56,18 +56,24 @@ function(add_git_version_info target)
         if(GIT_DESCRIBE MATCHES "^v?[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z][a-zA-Z0-9.-]*)?-([0-9]+)-g[a-f0-9]+")
           set(COMMITS_SINCE_TAG ${CMAKE_MATCH_2})
 
-          # Append commits to prerelease or create new prerelease section
           if(VERSION_PRERELEASE)
+            # Past a pre-release tag (e.g. v1.0.0-rc.1): extend the pre-release
+            # sequence -- still a pre-release of the same X.Y.Z.
             set(VERSION_STRING "${BASE_VERSION}.${COMMITS_SINCE_TAG}")
           else()
-            set(VERSION_STRING "${BASE_VERSION}-dev.${COMMITS_SINCE_TAG}")
+            # Past a final tag: per semver 2, X.Y.Z-dev.N is a pre-release of
+            # X.Y.Z and would sort BEFORE it. The released X.Y.Z is shipped, so
+            # any commits are heading toward the next patch release.
+            math(EXPR NEXT_PATCH "${VERSION_PATCH} + 1")
+            set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${NEXT_PATCH}-dev.${COMMITS_SINCE_TAG}")
           endif()
         else()
           # Fallback case
           if(VERSION_PRERELEASE)
             set(VERSION_STRING "${BASE_VERSION}")
           else()
-            set(VERSION_STRING "${BASE_VERSION}-dev")
+            math(EXPR NEXT_PATCH "${VERSION_PATCH} + 1")
+            set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${NEXT_PATCH}-dev")
           endif()
         endif()
 
