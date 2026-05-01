@@ -152,8 +152,12 @@ jobs:
           $stageDir = "${{ matrix.config }}"
 
           New-Item -ItemType Directory -Force -Path "$stageDir/apclient"
+          New-Item -ItemType Directory -Force -Path "$stageDir/apclient/game-data/icons"
           Copy-Item "$buildDir/src/okami-apclient/okami-apclient.dll" "$stageDir/apclient/"
           Copy-Item "$buildDir/cacert.pem" "$stageDir/apclient/"
+          Copy-Item "src/okami-apclient/icons/ap_standard.dds" "$stageDir/apclient/game-data/icons/"
+          Copy-Item "src/okami-apclient/icons/ap_progression.dds" "$stageDir/apclient/game-data/icons/"
+          Copy-Item "src/okami-apclient/icons/ap_trap.dds" "$stageDir/apclient/game-data/icons/"
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
