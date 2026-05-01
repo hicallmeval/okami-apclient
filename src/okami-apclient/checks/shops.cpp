@@ -240,7 +240,8 @@ okami::ItemShopStock *GetCurrentDemonFangShopData(uint16_t mapId, uint32_t *pNum
 // ShopMan Implementation
 // ============================================================================
 
-ShopMan::ShopMan(ISocket &socket, CheckCallback checkCallback) : socket_(socket), checkCallback_(std::move(checkCallback))
+ShopMan::ShopMan(ISocket &socket, CheckCallback checkCallback, CheckSentQuery isCheckSent)
+    : socket_(socket), checkCallback_(std::move(checkCallback)), isCheckSent_(std::move(isCheckSent))
 {
 }
 
@@ -359,7 +360,6 @@ void ShopMan::reset()
     scoutedMapId_ = 0;
     scoutedItems_.clear();
     currentShopId_ = -1;
-    purchasedChecks_.clear();
 }
 
 void ShopMan::scoutShopsForMap(uint16_t mapId)
@@ -686,7 +686,6 @@ void __fastcall ShopMan::hookCItemShop_PurchaseItem(void *pShop)
         int selectedSlot = scrollOffset + visualSelectIndex;
 
         int64_t checkId = checks::getShopCheckId(activeInstance_->currentShopId_, selectedSlot);
-        activeInstance_->purchasedChecks_.insert(checkId);
         activeInstance_->checkCallback_(checkId);
     }
 }
@@ -731,7 +730,6 @@ void __fastcall ShopMan::hookCKibaShop_PurchaseItem(void *pShop)
         int selectedSlot = scrollOffset + visualSelectIndex;
 
         int64_t checkId = checks::getShopCheckId(activeInstance_->currentShopId_, selectedSlot);
-        activeInstance_->purchasedChecks_.insert(checkId);
         activeInstance_->checkCallback_(checkId);
     }
 }
@@ -767,8 +765,8 @@ int __fastcall ShopMan::hookIsGrayedOut(void *pShop, int slotIndex)
     {
         int64_t checkId = checks::getShopCheckId(activeInstance_->currentShopId_, slotIndex);
 
-        // Already purchased this AP slot
-        if (activeInstance_->purchasedChecks_.contains(checkId))
+        // Already purchased this AP slot (server-confirmed or sent this session)
+        if (activeInstance_->isCheckSent_ && activeInstance_->isCheckSent_(checkId))
             return 0; // grayed
 
         // Check if player can afford it
@@ -794,7 +792,7 @@ int __fastcall ShopMan::hookIsPurchased(void *pShop, int slotIndex)
     if (activeInstance_ && activeInstance_->currentShopId_ >= 0 && activeInstance_->socket_.getSlotConfig().randomizeShops)
     {
         int64_t checkId = checks::getShopCheckId(activeInstance_->currentShopId_, slotIndex);
-        return activeInstance_->purchasedChecks_.contains(checkId) ? 1 : 0;
+        return (activeInstance_->isCheckSent_ && activeInstance_->isCheckSent_(checkId)) ? 1 : 0;
     }
 
     return originalIsPurchased_ ? originalIsPurchased_(pShop, slotIndex) : 0;
