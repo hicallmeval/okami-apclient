@@ -9,15 +9,18 @@
  * AP server. Each check has a unique ID computed from its category and
  * game-specific identifiers.
  *
- * ID Range Scheme:
- * - 200000 + brushIndex:                Brush acquisitions
- * - 300000 + shopId*1000 + itemSlot:    Shop purchases
- * - 400000 + mapId*10000 + bitIndex:    World state changes
- * - 500000 + mapId*10000 + bitIndex:    Collected objects
- * - 600000 + mapId*10000 + bitIndex:    Area restorations
- * - 700000 + bitIndex:                  Global flags
- * - 800000 + bitIndex:                  Game progress flags
- * - 900000 + (levelId << 8) + spawnIdx: Container pickups
+ * ID Range Scheme: categories spaced 1e9 apart,
+ * and 1000 slots per inner key (mapId / shopId / levelId).
+ *
+ * - 1_000_000_000 + brushIndex:                Brush acquisitions
+ * - 2_000_000_000 + shopId*1000 + itemSlot:    Shop purchases
+ * - 3_000_000_000 + mapId*1000 + bitIndex:     World state changes
+ * - 4_000_000_000 + mapId*1000 + bitIndex:     Collected objects
+ * - 5_000_000_000 + mapId*1000 + bitIndex:     Area restorations
+ * - 6_000_000_000 + bitIndex:                  Global flags
+ * - 7_000_000_000 + bitIndex:                  Game progress flags
+ * - 8_000_000_000 + levelId*1000 + spawnIdx:   Container pickups
+ *
  */
 namespace checks
 {
@@ -37,15 +40,15 @@ inline constexpr unsigned int monitorToGameBitIndex(unsigned int monitorBitIndex
     return word * 32 + (31 - bitInWord);
 }
 
-// Check ID range bases
-inline constexpr int64_t kBrushAcquisitionBase = 200000;
-inline constexpr int64_t kShopPurchaseBase = 300000;
-inline constexpr int64_t kWorldStateBase = 400000;
-inline constexpr int64_t kCollectedObjectBase = 500000;
-inline constexpr int64_t kAreaRestoredBase = 600000;
-inline constexpr int64_t kGlobalFlagBase = 700000;
-inline constexpr int64_t kGameProgressBase = 800000;
-inline constexpr int64_t kContainerBase = 900000;
+// Check ID range bases. Categories sit 1e9 apart
+inline constexpr int64_t kBrushAcquisitionBase = 1'000'000'000;
+inline constexpr int64_t kShopPurchaseBase = 2'000'000'000;
+inline constexpr int64_t kWorldStateBase = 3'000'000'000;
+inline constexpr int64_t kCollectedObjectBase = 4'000'000'000;
+inline constexpr int64_t kAreaRestoredBase = 5'000'000'000;
+inline constexpr int64_t kGlobalFlagBase = 6'000'000'000;
+inline constexpr int64_t kGameProgressBase = 7'000'000'000;
+inline constexpr int64_t kContainerBase = 8'000'000'000;
 
 /**
  * @brief Calculate check ID for brush acquisition
@@ -61,44 +64,44 @@ inline constexpr int64_t getBrushCheckId(int brushIndex)
  * @brief Calculate check ID for shop purchase
  * @param shopId The game's internal shop ID
  * @param itemSlot The slot number within the shop
- * @return Archipelago check ID (300000 + shopId*1000 + itemSlot)
+ * @return Archipelago check ID (kShopPurchaseBase + shopId*1000 + itemSlot)
  */
 inline constexpr int64_t getShopCheckId(int shopId, int itemSlot)
 {
-    return kShopPurchaseBase + (shopId * 1000) + itemSlot;
+    return kShopPurchaseBase + (static_cast<int64_t>(shopId) * 1000) + itemSlot;
 }
 
 /**
  * @brief Calculate check ID for world state bit change
  * @param mapId The map where the bit change occurred
  * @param bitIndex The specific bit that changed
- * @return Archipelago check ID (400000 + mapId*10000 + bitIndex)
+ * @return Archipelago check ID (kWorldStateBase + mapId*1000 + bitIndex)
  */
 inline constexpr int64_t getWorldStateCheckId(int mapId, int bitIndex)
 {
-    return kWorldStateBase + (mapId * 10000) + bitIndex;
+    return kWorldStateBase + (static_cast<int64_t>(mapId) * 1000) + bitIndex;
 }
 
 /**
  * @brief Calculate check ID for collected object
  * @param mapId The map where the object was collected
  * @param bitIndex The specific object bit that was set
- * @return Archipelago check ID (500000 + mapId*10000 + bitIndex)
+ * @return Archipelago check ID (kCollectedObjectBase + mapId*1000 + bitIndex)
  */
 inline constexpr int64_t getCollectedObjectCheckId(int mapId, int bitIndex)
 {
-    return kCollectedObjectBase + (mapId * 10000) + bitIndex;
+    return kCollectedObjectBase + (static_cast<int64_t>(mapId) * 1000) + bitIndex;
 }
 
 /**
  * @brief Calculate check ID for area restoration
  * @param mapId The map where the area was restored
  * @param bitIndex The specific restoration bit that was set
- * @return Archipelago check ID (600000 + mapId*10000 + bitIndex)
+ * @return Archipelago check ID (kAreaRestoredBase + mapId*1000 + bitIndex)
  */
 inline constexpr int64_t getAreaRestoredCheckId(int mapId, int bitIndex)
 {
-    return kAreaRestoredBase + (mapId * 10000) + bitIndex;
+    return kAreaRestoredBase + (static_cast<int64_t>(mapId) * 1000) + bitIndex;
 }
 
 /**
@@ -125,11 +128,11 @@ inline constexpr int64_t getGameProgressCheckId(int bitIndex)
  * @brief Calculate check ID for container pickup
  * @param levelId The level ID where the container exists
  * @param spawnIdx The spawn table index of the container
- * @return Archipelago check ID (900000 + (levelId << 8) + spawnIdx)
+ * @return Archipelago check ID (kContainerBase + levelId*1000 + spawnIdx)
  */
 inline constexpr int64_t getContainerCheckId(uint16_t levelId, int spawnIdx)
 {
-    return kContainerBase + (static_cast<int64_t>(levelId) << 8) + spawnIdx;
+    return kContainerBase + (static_cast<int64_t>(levelId) * 1000) + spawnIdx;
 }
 
 /**

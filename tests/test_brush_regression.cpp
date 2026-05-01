@@ -486,7 +486,6 @@ TEST_CASE_METHOD(BrushManFixture, "BrushMan: SET op (operation==0) fires check a
 
     REQUIRE(sentChecks_.size() == 1);
     CHECK(sentChecks_[0] == checks::getBrushCheckId(12));
-    CHECK(sentChecks_[0] == 200012);
 
     tearDown();
 }
@@ -527,9 +526,9 @@ TEST_CASE_METHOD(BrushManFixture, "BrushMan: bitIndex passed through unchanged i
     brushMan_->tick();
 
     REQUIRE(sentChecks_.size() == 3);
-    CHECK(sentChecks_[0] == 200001);
-    CHECK(sentChecks_[1] == 200022);
-    CHECK(sentChecks_[2] == 200030);
+    CHECK(sentChecks_[0] == checks::getBrushCheckId(1));
+    CHECK(sentChecks_[1] == checks::getBrushCheckId(22));
+    CHECK(sentChecks_[2] == checks::getBrushCheckId(30));
 
     tearDown();
 }
@@ -563,7 +562,7 @@ TEST_CASE_METHOD(BrushManFixture, "BrushMan: already-obtained bit still queues a
     CHECK_FALSE(wolf::mock::triggerBrushEdit(12, 0)); // pass through
     brushMan_->tick();
     REQUIRE(sentChecks_.size() == 1); // but check IS sent
-    CHECK(sentChecks_[0] == 200012);
+    CHECK(sentChecks_[0] == checks::getBrushCheckId(12));
 
     tearDown();
 }
@@ -576,7 +575,7 @@ TEST_CASE_METHOD(BrushManFixture, "BrushMan: bit with no APWorld location is ful
     // sub-abilities; otherwise we strip them without an AP item in return.
     // Same shape for the Kamiki Sunrise tutorial: bit 1 (sunrise_default)
     // is set by story progression but has no apworld location.
-    isValidLocation_ = [](int64_t id) { return id == 200004; }; // only Bloom
+    isValidLocation_ = [](int64_t id) { return id == checks::getBrushCheckId(4); }; // only Bloom
 
     setUp();
 
@@ -594,7 +593,7 @@ TEST_CASE_METHOD(BrushManFixture, "BrushMan: bit with no APWorld location is ful
     CHECK(wolf::mock::triggerBrushEdit(4, 0));
     brushMan_->tick();
     REQUIRE(sentChecks_.size() == 1);
-    CHECK(sentChecks_[0] == 200004);
+    CHECK(sentChecks_[0] == checks::getBrushCheckId(4));
 
     tearDown();
 }

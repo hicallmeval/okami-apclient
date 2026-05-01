@@ -387,12 +387,12 @@ TEST_CASE("CompileString: produces valid MSD encoding with EndDialog terminator"
 TEST_CASE("getShopCheckId produces correct location IDs for shop slots", "[itempatch][shops]")
 {
     // Verify the mapping used by hookGetMSDString to resolve selected slots
-    // getShopCheckId(shopId, slot) = 300000 + shopId*1000 + slot
-    REQUIRE(checks::getShopCheckId(0, 0) == 300000);
-    REQUIRE(checks::getShopCheckId(0, 1) == 300001);
-    REQUIRE(checks::getShopCheckId(5, 0) == 305000);
-    REQUIRE(checks::getShopCheckId(5, 3) == 305003);
-    REQUIRE(checks::getShopCheckId(10, 7) == 310007);
+    // getShopCheckId(shopId, slot) = kShopPurchaseBase + shopId*1000 + slot
+    REQUIRE(checks::getShopCheckId(0, 0) == checks::kShopPurchaseBase);
+    REQUIRE(checks::getShopCheckId(0, 1) == checks::kShopPurchaseBase + 1);
+    REQUIRE(checks::getShopCheckId(5, 0) == checks::kShopPurchaseBase + 5000);
+    REQUIRE(checks::getShopCheckId(5, 3) == checks::kShopPurchaseBase + 5003);
+    REQUIRE(checks::getShopCheckId(10, 7) == checks::kShopPurchaseBase + 10007);
 }
 
 TEST_CASE("registerScoutedItemName: CompileString output matches MSD encoding", "[itempatch][live]")

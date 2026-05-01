@@ -26,9 +26,9 @@ TEST_CASE("Shop check ID encoding constraints", "[shops][check_types]")
 {
     SECTION("Shop IDs don't overflow into next category")
     {
-        // Max reasonable: shopId=99, slot=999 -> 399999
-        // WorldState starts at 400000
-        int64_t maxShopCheck = checks::getShopCheckId(99, 999);
+        // Inner multiplier is 1000; even a wildly oversized shopId / slot
+        // pair has to stay below kWorldStateBase.
+        int64_t maxShopCheck = checks::getShopCheckId(999'999, 999);
         REQUIRE(maxShopCheck < checks::kWorldStateBase);
     }
 
@@ -463,7 +463,7 @@ constexpr int kOtherPlayer = 2;
 
 ScoutedItem makeScouted(int64_t apItemId, int destinationPlayer, unsigned flags)
 {
-    return ScoutedItem{.item = apItemId, .location = 300000, .player = destinationPlayer, .flags = flags};
+    return ScoutedItem{.item = apItemId, .location = checks::kShopPurchaseBase, .player = destinationPlayer, .flags = flags};
 }
 } // namespace
 
