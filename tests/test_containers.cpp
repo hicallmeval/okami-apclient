@@ -20,9 +20,9 @@ static_assert(checks::getContainerCheckId(0, 0) == checks::kContainerBase);
 
 TEST_CASE("Container check ID ranges don't overlap between levels", "[containers][check_types]")
 {
-    // This tests a real constraint: encoding must not cause level N's IDs to collide with level N+1
-    // Max spawn index is 255 (8 bits allocated)
-    int64_t level5Max = checks::getContainerCheckId(5, 255);
+    // Encoding must not cause level N's IDs to collide with level N+1.
+    // Inner multiplier is 1000, so spawn indices 0..999 fit per level.
+    int64_t level5Max = checks::getContainerCheckId(5, 999);
     int64_t level6Min = checks::getContainerCheckId(6, 0);
     REQUIRE(level5Max < level6Min);
 }
