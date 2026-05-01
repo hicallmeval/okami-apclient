@@ -227,6 +227,43 @@ TEST_CASE_METHOD(BrushFixture, "Granting non-Bloom brush does not set bits 2 or 
 }
 
 // ============================================================================
+// Vine grant must set both bit 19 (vine_base) AND bit 20 (vine_holy_smoke).
+// vine_holy_smoke gates the green-smoke effect on flowers and the apworld
+// doesn't ship it separately, so grant() has to mirror vanilla. (#132)
+// ============================================================================
+
+TEST_CASE_METHOD(BrushFixture, "Granting Vine sets bits 19 and 20", "[brush][regression][vine]")
+{
+    setUp();
+
+    constexpr int64_t kVineApId = 0x113;
+    auto result = rewardMan_->grantReward(kVineApId);
+    REQUIRE(result.has_value());
+
+    // bits 19 and 20 are both in byte 2: mask 0x08 | 0x10 = 0x18.
+    const auto *src = rawBytes(okami::main::usableBrushes);
+    CHECK((src[2] & 0x18) == 0x18);
+
+    const auto *world = reinterpret_cast<const uint8_t *>(apgame::usableBrushTechniques.get_ptr());
+    CHECK((world[2] & 0x18) == 0x18);
+
+    tearDown();
+}
+
+TEST_CASE_METHOD(BrushFixture, "Granting non-Vine brush does not set bit 20", "[brush][regression][vine]")
+{
+    setUp();
+
+    constexpr int64_t kRejuvenationApId = 0x116;
+    REQUIRE(rewardMan_->grantReward(kRejuvenationApId).has_value());
+
+    const auto *src = rawBytes(okami::main::usableBrushes);
+    CHECK((src[2] & 0x10) == 0); // bit 20 not set
+
+    tearDown();
+}
+
+// ============================================================================
 // Source + copy mirroring: granting writes BOTH BrushData and WorldStateData
 // ============================================================================
 
