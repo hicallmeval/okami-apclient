@@ -35,7 +35,7 @@ class RewardManFixture
     }
 
     // Brush bits are written/read by the game with LSB-first byte semantics
-    // (mask = 1 << (idx % 8) within bytes[idx / 8]) — different from BitField's
+    // (mask = 1 << (idx % 8) within bytes[idx / 8]) -- different from BitField's
     // MSB-first within-32-bit-word convention. Production code writes via byte
     // helpers; tests must read the same way.
     static bool readGameBit(const void *base, int bitIndex)

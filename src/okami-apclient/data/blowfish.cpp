@@ -30,7 +30,7 @@ SOFTWARE.
 namespace Nippon
 {
 
-// Standard Blowfish P-array initial values (π digits)
+// Standard Blowfish P-array initial values (pi digits)
 static uint32_t const sP[16 + 2] = {
     0x243F6A88U, 0x85A308D3U, 0x13198A2EU, 0x03707344U, 0xA4093822U, 0x299F31D0U, 0x082EFA98U, 0xEC4E6C89U, 0x452821E6U,
     0x38D01377U, 0xBE5466CFU, 0x34E90C6CU, 0xC0AC29B7U, 0xC97C50DDU, 0x3F84D5B5U, 0xB5470917U, 0x9216D5D9U, 0x8979FB1BU,

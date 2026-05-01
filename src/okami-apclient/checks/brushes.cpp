@@ -57,7 +57,7 @@ bool dispatchBrushEdit(int bitIndex, int operation, BrushMan &handler)
     if (isClearOp(operation))
         return false;
 
-    // Anything other than SET (0) is unexpected — log and pass through.
+    // Anything other than SET (0) is unexpected -- log and pass through.
     if (operation != kBrushOpSet)
     {
         wolf::logWarning("[BrushMan] unknown op=%d bit=%d -> passthrough", operation, bitIndex);

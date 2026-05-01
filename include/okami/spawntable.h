@@ -41,7 +41,7 @@ struct SpawnTableEntry
     char _pad_28[0x02];        // +0x28
     uint16_t flags;            // +0x2A: Entry flags (bit 0 = enabled, bit 1 = temp, bit 2 = clear after)
     char _pad_2C[0x1C];        // +0x2C: Unknown padding
-    void *parent_entity;       // +0x48: Parent entity pointer (for item→chest linking)
+    void *parent_entity;       // +0x48: Parent entity pointer (for item->chest linking)
     void *list_ptr_2;          // +0x50: Secondary link pointer
 };
 
@@ -62,7 +62,7 @@ struct SpawnTable
     SpawnTableHeader header;      // +0x00: Header (32 bytes)
     SpawnTableEntry entries[128]; // +0x20: 128 spawn entries (0x58 bytes each) = 0x2C00
     // Total main table: 0x20 + 0x2C00 = 0x2C20
-    ContainerData dynamic_data[32]; // +0x2C20: Dynamic ContainerData buffer (32 slots × 0x28) (probably render limit?)
+    ContainerData dynamic_data[32]; // +0x2C20: Dynamic ContainerData buffer (32 slots x 0x28) (probably render limit?)
 };
 
 // Global spawn table address

@@ -283,7 +283,7 @@ TEST_CASE("ShopDefinition dirty flag prevents unnecessary rebuilds", "[shops][Sh
 
 TEST_CASE("GetShopIdForMap: wildcard entries match any shopNum", "[shops][ShopMap]")
 {
-    // AgataForest uses kAnyShopNum — should match regardless of shopNum
+    // AgataForest uses kAnyShopNum -- should match regardless of shopNum
     auto id0 = checks::GetShopIdForMap(okami::MapID::AgataForestCursed, 0);
     auto id1 = checks::GetShopIdForMap(okami::MapID::AgataForestCursed, 999);
     REQUIRE(id0.has_value());
@@ -348,7 +348,7 @@ TEST_CASE("ShopDefinition SetStock: exactly MaxShopStockSize items is accepted",
 
     shop.SetStock(exactStock);
 
-    // No warning should be logged — exactly MaxShopStockSize is valid
+    // No warning should be logged -- exactly MaxShopStockSize is valid
     bool foundWarning = false;
     for (const auto &msg : wolf::mock::logMessages)
     {
@@ -470,7 +470,7 @@ ScoutedItem makeScouted(int64_t apItemId, int destinationPlayer, unsigned flags)
 TEST_CASE("selectShopItemType: native displayable item passes through unchanged", "[shops][selectShopItemType]")
 {
     // A regular Okami item destined for the local player should always show
-    // its real type — independent of icon-package state.
+    // its real type -- independent of icon-package state.
     const auto scouted = makeScouted(/*ginseng=*/0x39, kMyPlayer, 0);
 
     CHECK(checks::selectShopItemType(scouted, kMyPlayer, /*hasCustomIcons=*/true) == 0x39);
@@ -488,7 +488,7 @@ TEST_CASE("selectShopItemType: foreign item falls back to vanilla item when icon
 {
     // Without the combined icon package, the foreign-progression dummy type
     // (0x82) has no entry in the vanilla icon table; rendering it crashes the
-    // game. Expect a vanilla item type instead — anything in the regular
+    // game. Expect a vanilla item type instead -- anything in the regular
     // 0x00..0xFF range that has a vanilla icon. Chestnut (0x83) is the value
     // we already redirect to in BuildItemResourceName for the same reason.
     const auto scouted = makeScouted(12345, kOtherPlayer, kProgressionFlag);
@@ -505,7 +505,7 @@ TEST_CASE("selectShopItemType: foreign item falls back to vanilla item when icon
 TEST_CASE("selectShopItemType: native non-displayable (brush) falls back without icons", "[shops][selectShopItemType]")
 {
     // AP-side native progression items that aren't directly displayable (a
-    // brush AP item id, here 0x10C / Power Slash, is in the brush range —
+    // brush AP item id, here 0x10C / Power Slash, is in the brush range --
     // not a vanilla shop-renderable item).
     const auto scouted = makeScouted(/*power_slash=*/0x10C, kMyPlayer, kProgressionFlag);
 

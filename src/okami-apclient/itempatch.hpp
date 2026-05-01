@@ -26,13 +26,13 @@ void setCurrentShopId(int shopId);
 
 /// Register a scouted item name for a specific AP location.
 /// Idempotent: calling again for the same location is a no-op.
-/// Safe to call at any time — no dependency on MSD load state.
+/// Safe to call at any time -- no dependency on MSD load state.
 void registerScoutedItemName(int64_t locationId, const std::string &name);
 
 /// Resolve an AP dummy item's per-slot custom name from the current shop context.
 /// Returns the compiled MSD string for the selected slot's scouted item, or
 /// nullptr if the strId is not an AP dummy item or no custom name is registered.
-/// This is the core logic called by hookGetMSDString — exposed for testability.
+/// This is the core logic called by hookGetMSDString -- exposed for testability.
 const uint16_t *resolveApItemName(uint16_t strId);
 
 /// Set the shop object pointer directly. In production this is captured by
@@ -55,7 +55,7 @@ void clearContainerContext();
 void resetState();
 
 /// True iff the combined icon package was successfully built during
-/// initializeEarly() — i.e. the game can render AP-dummy item types.
+/// initializeEarly() -- i.e. the game can render AP-dummy item types.
 /// Callers should substitute a vanilla item type (e.g. chestnut) when this
 /// returns false, otherwise the game's icon lookup walks off-table and
 /// crashes when the slot is rendered.

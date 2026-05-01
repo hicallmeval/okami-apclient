@@ -62,7 +62,7 @@ struct GameFlagWriter
     }
 
     /// Gameplay-safe: no save/load op active, no area-load in flight, not title screen.
-    /// saveStateFlags is zeroed — bits 6 (New Game marker) and 8 (area-load trigger)
+    /// saveStateFlags is zeroed -- bits 6 (New Game marker) and 8 (area-load trigger)
     /// are intentionally NOT set here; isSafeToSave should not depend on them.
     void setSafe()
     {
@@ -369,7 +369,7 @@ TEST_CASE("Auto-save: rapid queues coalesce to single save", "[saveman][autosave
     for (int i = 0; i < 10; i++)
     {
         sm->queueAutoSave();
-        sm->processAutoSave(); // Each call within debounce window — no save
+        sm->processAutoSave(); // Each call within debounce window -- no save
     }
     CHECK_FALSE(sm->hasSaveFile());
 
@@ -389,7 +389,7 @@ TEST_CASE("Auto-save: rapid queues coalesce to single save", "[saveman][autosave
 TEST_CASE("Snapshot captures live player position from Amaterasu object", "[saveman][snapshot]")
 {
     // CharacterStats x/y/z (position) and u/v/w (rotation) are "set from elsewhere"
-    // — populated by FUN_18043b040 just before vanilla save, reading from the
+    // -- populated by FUN_18043b040 just before vanilla save, reading from the
     // Amaterasu object at ammyModel. snapshotToSlot must inline that read so our
     // save carries the live position instead of the stale CharacterStats values,
     // otherwise reload spawns the player at the map's default origin.
@@ -405,10 +405,10 @@ TEST_CASE("Snapshot captures live player position from Amaterasu object", "[save
 
     // Stage an Amaterasu object inside the mock region, and a separate position
     // vec3 it points to. Both addresses stay within kMockMemorySize (0xB80000).
-    const uintptr_t ammyAddr = base + 0xB70000; // ammy struct — has rotation inline at +0xB0
+    const uintptr_t ammyAddr = base + 0xB70000; // ammy struct -- has rotation inline at +0xB0
     const uintptr_t posAddr = base + 0xB78000;  // vec3 that ammy+0xA8 points to
 
-    // Live position (x,y,z) — what the player is actually standing at
+    // Live position (x,y,z) -- what the player is actually standing at
     auto *pos = reinterpret_cast<float *>(posAddr);
     pos[0] = -51.0f;
     pos[1] = 10.0f;
@@ -426,7 +426,7 @@ TEST_CASE("Snapshot captures live player position from Amaterasu object", "[save
     // Global ammyModel pointer points at our staged object
     *reinterpret_cast<uintptr_t *>(base + okami::main::ammyModel) = ammyAddr;
 
-    // Stale values in CharacterStats — what a pre-cMcSave snapshot would otherwise read
+    // Stale values in CharacterStats -- what a pre-cMcSave snapshot would otherwise read
     auto *charStats = reinterpret_cast<okami::CharacterStats *>(base + okami::main::characterStats);
     charStats->x = 999.0f;
     charStats->y = 999.0f;
@@ -459,7 +459,7 @@ TEST_CASE("Snapshot captures live player position from Amaterasu object", "[save
 TEST_CASE("Snapshot overrides stale CollectionData map IDs with live values", "[saveman][snapshot]")
 {
     // CollectionData.currentMapId and .lastMapId are documented (structs.hpp) as
-    // "set from +0xB6B240 / +0xB6B248 on save" — their live values can lag behind
+    // "set from +0xB6B240 / +0xB6B248 on save" -- their live values can lag behind
     // the actual map until the game's own pre-save step runs, which happens AFTER
     // hookMcSaveCtor. snapshotToSlot must patch them from exteriorMapID /
     // exteriorMapIDCopy so the save reloads into the room the player was actually in.
@@ -472,11 +472,11 @@ TEST_CASE("Snapshot overrides stale CollectionData map IDs with live values", "[
 
     uintptr_t base = wolf::getModuleBase("main.dll");
 
-    // Live map globals — where the player actually is.
+    // Live map globals -- where the player actually is.
     *reinterpret_cast<uint16_t *>(base + okami::main::exteriorMapID) = 0x0122;
     *reinterpret_cast<uint16_t *>(base + okami::main::exteriorMapIDCopy) = 0x0121;
 
-    // Stale values in CollectionData — what a pre-cMcSave snapshot would otherwise read.
+    // Stale values in CollectionData -- what a pre-cMcSave snapshot would otherwise read.
     auto *collection = reinterpret_cast<okami::CollectionData *>(base + okami::main::collectionData);
     collection->currentMapId = 0xDEAD;
     collection->lastMapId = 0xBEEF;
@@ -814,7 +814,7 @@ TEST_CASE("isSafeToSave: false while save op active (bit 22)", "[saveman][safe]"
 TEST_CASE("isSafeToSave: true when bit 6 (New Game marker) is set", "[saveman][safe]")
 {
     // Bit 6 of saveStateFlags is sticky after New Game entry (FUN_180438810 sets
-    // 0x140 = bits 6+8 on the New Game gameplay path). It is NOT a busy flag —
+    // 0x140 = bits 6+8 on the New Game gameplay path). It is NOT a busy flag --
     // it's a status marker that persists through gameplay. isSafeToSave must
     // ignore it, otherwise auto-save is permanently blocked after New Game.
     wolf::mock::reset();
@@ -879,7 +879,7 @@ TEST_CASE("Auto-save: deferred while unsafe, fires once flags clear", "[saveman]
     sm->setApModeActive(true);
     GameFlagWriter flags(wolf::getModuleBase("main.dll"));
     flags.setSafe();
-    *flags.sysFlags |= (1u << 22); // save op active — unsafe
+    *flags.sysFlags |= (1u << 22); // save op active -- unsafe
 
     cleanupSaveFile(*sm);
 
@@ -922,7 +922,7 @@ TEST_CASE("Auto-save: direct saveGameState clears pending state", "[saveman][aut
     REQUIRE(sm->saveGameState());
     CHECK(sm->hasSaveFile());
 
-    // Pending should have been cleared. A subsequent processAutoSave should be a no-op —
+    // Pending should have been cleared. A subsequent processAutoSave should be a no-op --
     // we verify by deleting the file and ticking: nothing should write it back.
     REQUIRE(sm->deleteSave());
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
@@ -945,7 +945,7 @@ TEST_CASE("Cold-start save produces game-compatible empty slots", "[saveman][gol
     cleanupSaveFile(*sm);
     REQUIRE_FALSE(sm->hasSaveFile());
 
-    // Save with no existing file — cold-start path
+    // Save with no existing file -- cold-start path
     REQUIRE(sm->saveGameState());
 
     auto writtenFile = std::make_unique<okami::SaveFile>();

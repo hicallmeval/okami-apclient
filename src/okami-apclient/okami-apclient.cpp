@@ -82,24 +82,20 @@ class APClientMod
     static void lateGameInit()
     {
         wolf::logInfo("APclient Version %s (%s)", version::string.data(), version::hash.data());
-        // Initialize game state accessors first
         apgame::initialize();
 
-        // Install hooks (before patchItemParams, so hooks intercept game events)
+        // Install hooks before patchItemParams so they intercept game events.
         itempatch::initialize();
-
-        // Patch ItemParam array to prevent shop crashes
         itempatch::patchItemParams();
 
-        // Create save manager and install save/load hooks
         g_saveMan = std::make_unique<SaveMan>(ArchipelagoSocket::instance());
         g_saveMan->initialize();
         g_saveMan->installHooks();
 
-        // Create managers with explicit dependencies
         g_checkMan = std::make_unique<CheckMan>(ArchipelagoSocket::instance());
 
-        // RewardMan callback to disable check sending during granting
+        // Disable check sending while RewardMan is granting items, so granted
+        // items don't echo back as new checks.
         g_rewardMan = std::make_unique<RewardMan>(
             [](bool enabled)
             {
@@ -109,21 +105,17 @@ class APClientMod
                 }
             });
 
-        // Inject managers into socket
         ArchipelagoSocket::instance().setRewardMan(g_rewardMan.get());
         ArchipelagoSocket::instance().setCheckMan(g_checkMan.get());
 
-        // Initialize UI
         initializeGui();
         loginwindow::initialize(ArchipelagoSocket::instance());
         loginwindow::setSaveMan(g_saveMan.get());
         warpwindow::initialize();
 
-        // Initialize check manager (sets up monitors and container hooks)
         g_checkMan->initialize();
 
-        // Register developer-console commands ("ap status", "ap say <...>",
-        // "ap give <id>"). Done after managers exist so the handlers can
+        // Register console commands after managers exist so handlers can
         // close over live references.
         console_commands::registerAll(ArchipelagoSocket::instance(), *g_rewardMan);
 

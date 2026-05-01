@@ -35,10 +35,10 @@ void CheckMan::initialize()
     auto callback = [this](int64_t checkId) { sendCheck(checkId); };
 
     // Gamestate bitfield monitors (gameProgress, globalFlags, worldState,
-    // collectedObjects, areasRestored) are disabled for now — they fire
+    // collectedObjects, areasRestored) are disabled for now -- they fire
     // frequently and aren't consumed by the APWorld yet.
 
-    // Always create BrushMan here — initialize() registers a wolf callback,
+    // Always create BrushMan here -- initialize() registers a wolf callback,
     // which takes g_CallbackMutex. Doing this from poll() would deadlock
     // because the game-tick dispatcher holds that same mutex across user
     // callbacks. The hook stays inactive (no-op) until setActive(true).

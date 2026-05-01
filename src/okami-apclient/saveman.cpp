@@ -70,14 +70,14 @@ constexpr uintptr_t kOkamiPureReadOffset = 0x14f580;     // FUN_18014f580: Calle
                                                          //   offset, userBuffer, &size)
 } // namespace
 
-static_assert(sizeof(okami::SaveSlot) == 0x172A0, "SaveSlot size mismatch — expected 0x172A0 bytes");
-static_assert(sizeof(okami::SaveFile) == 30 * sizeof(okami::SaveSlot), "SaveFile size mismatch — expected 30x SaveSlot");
+static_assert(sizeof(okami::SaveSlot) == 0x172A0, "SaveSlot size mismatch -- expected 0x172A0 bytes");
+static_assert(sizeof(okami::SaveFile) == 30 * sizeof(okami::SaveSlot), "SaveFile size mismatch -- expected 30x SaveSlot");
 
 // =============================================================================
 // Hook infrastructure
 // =============================================================================
 
-// Raw pointer for hook callbacks — set by installHooks(), cleared by destructor.
+// Raw pointer for hook callbacks -- set by installHooks(), cleared by destructor.
 static SaveMan *g_saveMan = nullptr;
 
 // Function signatures (x64 __fastcall, from Ghidra decompilation)
@@ -191,7 +191,7 @@ static int32_t __fastcall hookSteamGetFileSize(void *pThis, const char *pchFile)
 //
 // Intercepting here lets us:
 //   1. Write AP data to the .oksav file directly.
-//   2. Skip the Steam call entirely — no handle to manage, no Steam Cloud
+//   2. Skip the Steam call entirely -- no handle to manage, no Steam Cloud
 //      touch (no OKAMI.apstub pollution).
 //   3. Zero the tracking struct so the caller's cleanup guards
 //      (`if (local_170 != 0)`, `if (local_188 != null)`) all skip.
@@ -338,7 +338,7 @@ static uint32_t __fastcall hookOkamiPureRead(const void *pDir, const void *pFile
 
         if (g_saveMan && g_saveMan->isApModeActive())
         {
-            wolf::logError("[SaveMan] OKAMI pure-read: redirect INACTIVE but AP mode ACTIVE — "
+            wolf::logError("[SaveMan] OKAMI pure-read: redirect INACTIVE but AP mode ACTIVE -- "
                            "forwarding to Steam (will read vanilla save)");
         }
     }
@@ -350,7 +350,7 @@ static uint32_t __fastcall hookOkamiPureRead(const void *pDir, const void *pFile
 /// Called by the state machine (FUN_1801bfcb0) to decide whether to show the save UI.
 /// Returns 1 -> allocate buffers and open save slot picker (state 0).
 /// Returns 0 -> skip directly to cleanup (state 2), no UI ever shown.
-/// When AP is connected, we return 0 so the vanilla save menu never opens —
+/// When AP is connected, we return 0 so the vanilla save menu never opens --
 /// this is the save-mirror / save-point interception point (Req 7).
 static unsigned char __fastcall hookSaveGate(void *pMcSave)
 {
@@ -366,14 +366,14 @@ static unsigned char __fastcall hookSaveGate(void *pMcSave)
     return s_origSaveGate(pMcSave);
 }
 
-/// Hook: cMcSave constructor — when AP connected, snapshot game state to .oksav.
+/// Hook: cMcSave constructor -- when AP connected, snapshot game state to .oksav.
 /// The vanilla ctor still runs afterward, but hookSaveGate returns 0 so the state
-/// machine skips directly to cleanup — no save slot picker, no Steam Cloud write.
+/// machine skips directly to cleanup -- no save slot picker, no Steam Cloud write.
 static void __fastcall hookMcSaveCtor(void *pContext)
 {
     if (!g_saveMan)
     {
-        wolf::logError("[SaveMan] hookMcSaveCtor fired with g_saveMan=null — mod not fully initialized");
+        wolf::logError("[SaveMan] hookMcSaveCtor fired with g_saveMan=null -- mod not fully initialized");
         s_origMcSaveCtor(pContext);
         return;
     }
@@ -462,7 +462,7 @@ bool SaveMan::saveGameState()
         return false;
     }
 
-    // Any successful save — whether from processAutoSave, save-mirror, or manual —
+    // Any successful save -- whether from processAutoSave, save-mirror, or manual --
     // satisfies the pending auto-save request. Clear the debounce state so the next
     // check-sent queue starts a fresh 30s deferral clock.
     {
@@ -496,7 +496,7 @@ bool SaveMan::loadGameState()
     uint64_t expected = computeChecksum(slot);
     if (slot.checksum != expected)
     {
-        wolf::logWarning("[SaveMan] Checksum mismatch (file=0x%llX, computed=0x%llX) — loading anyway", slot.checksum, expected);
+        wolf::logWarning("[SaveMan] Checksum mismatch (file=0x%llX, computed=0x%llX) -- loading anyway", slot.checksum, expected);
     }
 
     restoreFromSlot(slot);
@@ -599,7 +599,7 @@ void SaveMan::processAutoSave()
         std::scoped_lock lock(autoSaveMutex_);
         if (!deferralWarned_ && now - autoSaveQueuedAt_ >= AUTO_SAVE_DEFER_WARN)
         {
-            wolf::logWarning("[SaveMan] Auto-save deferred >30s — game state not safe "
+            wolf::logWarning("[SaveMan] Auto-save deferred >30s -- game state not safe "
                              "(in load / save / title / map transition)");
             deferralWarned_ = true;
         }
@@ -622,12 +622,12 @@ bool SaveMan::isSafeToSave() const
     if (!initialized_)
         return false;
 
-    // Title screen — no gameplay state to snapshot.
+    // Title screen -- no gameplay state to snapshot.
     uint16_t mapId = *reinterpret_cast<const uint16_t *>(moduleBase_ + okami::main::exteriorMapID);
     if (mapId == static_cast<uint16_t>(MapID::TitleScreen) || mapId == static_cast<uint16_t>(MapID::TitleScreenDemoCutscene))
         return false;
 
-    // Save operation already in flight — bit 22 of systemFlags is the cMcSys
+    // Save operation already in flight -- bit 22 of systemFlags is the cMcSys
     // blocking-loop "busy" bit, set only while cMcSave/cMcLoad/cMcBoot is running.
     // This is the only reliable busy signal in saveStateFlags / systemFlags. We
     // deliberately do NOT check saveStateFlags bits 6 or 8:
@@ -639,7 +639,7 @@ bool SaveMan::isSafeToSave() const
     if (sysFlags & (1u << 22))
         return false;
 
-    // Area-load pipeline active — any bits in 0x6001000 mask set means map load in progress.
+    // Area-load pipeline active -- any bits in 0x6001000 mask set means map load in progress.
     uint32_t areaFlags = *reinterpret_cast<const uint32_t *>(moduleBase_ + okami::main::areaLoadFlags);
     if (areaFlags & 0x6001000u)
         return false;
@@ -673,8 +673,8 @@ void SaveMan::snapshotToSlot(okami::SaveSlot &slot)
     // Header
     slot.header = kHeaderMagic;
 
-    // areaNameID at +0x04: title-screen location label (0x00–0x35 valid).
-    // Look up from the live exterior map ID — 0x79BEB4 is only populated
+    // areaNameID at +0x04: title-screen location label (0x00-0x35 valid).
+    // Look up from the live exterior map ID -- 0x79BEB4 is only populated
     // inside the game's own save routine and reads 0xFFFFFFFF otherwise.
     uint16_t mapId = *reinterpret_cast<const uint16_t *>(moduleBase_ + okami::main::exteriorMapID);
     slot.areaNameStrId = okami::getAreaNameID(mapId);
@@ -696,7 +696,7 @@ void SaveMan::snapshotToSlot(okami::SaveSlot &slot)
     //   position comes via pointer at ammy+0xA8 -> vec3 {x,y,z}
     //   rotation is inline at ammy+0xB0..+0xB8 as three floats
     // hookMcSaveCtor fires before that step, so the live values in CharacterStats
-    // are stale — leaving the player at the map's default spawn on reload (often
+    // are stale -- leaving the player at the map's default spawn on reload (often
     // origin, outside geometry). Patch them in from the live sources here.
     {
         uintptr_t ammy = *reinterpret_cast<const uintptr_t *>(moduleBase_ + okami::main::ammyModel);
@@ -725,7 +725,7 @@ void SaveMan::snapshotToSlot(okami::SaveSlot &slot)
     // "only loaded into this struct on save". The game's own pre-save
     // step (FUN_1801c2a40) populates these from the live exteriorMapID /
     // exteriorMapIDCopy globals. hookMcSaveCtor runs BEFORE that step,
-    // so the in-memory values here are stale — typically the parent/"top"
+    // so the in-memory values here are stale -- typically the parent/"top"
     // map instead of the sub-map the player is actually in, which is why
     // reload spawns in the wrong room. Patch them from the live sources.
     {
@@ -757,7 +757,7 @@ void SaveMan::restoreFromSlot(const okami::SaveSlot &slot)
 }
 
 // =============================================================================
-// Checksum (ported from OriginEdit — XOR all qwords except the checksum field)
+// Checksum (ported from OriginEdit -- XOR all qwords except the checksum field)
 // =============================================================================
 
 uint64_t SaveMan::computeChecksum(const okami::SaveSlot &slot)
@@ -809,11 +809,11 @@ bool SaveMan::writeSlotToFile(const okami::SaveSlot &slot)
             std::ifstream existing(path, std::ios::binary);
             if (existing.is_open() && existing.read(reinterpret_cast<char *>(saveFile.get()), sizeof(okami::SaveFile)))
             {
-                // Existing file read OK — slots 1-29 preserved
+                // Existing file read OK -- slots 1-29 preserved
             }
             else
             {
-                // No existing file or read failed — initialize to match game's empty-slot format:
+                // No existing file or read failed -- initialize to match game's empty-slot format:
                 // all zeros except areaNameStrId = 0xFFFFFFFF per slot.
                 std::memset(saveFile.get(), 0, sizeof(okami::SaveFile));
                 for (int i = 0; i < 30; ++i)
@@ -987,7 +987,7 @@ void SaveMan::installSteamRedirect()
     wolf::logInfo("[SaveMan] ISteamRemoteStorage at %p, vtable at %p", remoteStorage, vtable);
 
     // Direct vtable patching instead of MinHook inline hooks.
-    // steamclient64.dll functions are only ~0x40 bytes each — MinHook's 14-byte
+    // steamclient64.dll functions are only ~0x40 bytes each -- MinHook's 14-byte
     // x64 JMP trampoline corrupts adjacent function entries, causing stack overflow.
     // Vtable patching is safe: save original pointer, overwrite entry, done.
     DWORD oldProtect;
