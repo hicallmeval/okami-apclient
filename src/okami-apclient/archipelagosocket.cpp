@@ -480,8 +480,13 @@ void ArchipelagoSocket::setupHandlers(const std::string &slot, const std::string
         [this](const APClient::PrintJSONArgs &args)
         {
             std::string text = client_->render_json(args.data);
-            if (!text.empty())
-                notificationwindow::queue(text);
+            if (text.empty())
+                return;
+            notificationwindow::queue(text);
+            // Mirror to the dev console so server replies to slash commands
+            // (/help, /players, /missing, ...) are scrollable history, not just
+            // a brief overlay.
+            wolf::consolePrint(("[AP] " + text).c_str());
         });
 
     client_->set_location_checked_handler(
@@ -628,6 +633,21 @@ void ArchipelagoSocket::sendLocations(const std::vector<int64_t> &locationIDs)
     catch (const std::exception &e)
     {
         wolf::logWarning("[Socket] Failed to send locations: %s", e.what());
+    }
+}
+
+bool ArchipelagoSocket::say(const std::string &text)
+{
+    if (text.empty())
+        return false;
+    try
+    {
+        return withClient([&text](APClient &client) { return client.Say(text); });
+    }
+    catch (const std::exception &e)
+    {
+        wolf::logWarning("[Socket] Say failed: %s", e.what());
+        return false;
     }
 }
 

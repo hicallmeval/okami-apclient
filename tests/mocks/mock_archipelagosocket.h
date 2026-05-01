@@ -70,6 +70,7 @@ class MockArchipelagoSocket : public ISocket
     void gameFinished() override;
     void poll() override;
     void processMainThreadTasks() override;
+    bool say(const std::string &text) override;
 
     std::string getItemName(int64_t id, int player) const override;
     std::string getItemDesc(int player) const override;
@@ -108,6 +109,8 @@ class MockArchipelagoSocket : public ISocket
     const std::vector<int> &getStatusUpdates() const;
 
     bool wasGameFinishedCalled() const;
+
+    const std::vector<std::string> &getSaidMessages() const;
 
     size_t getScoutRequestCount() const;
     const SentScoutRequest &getScoutRequest(size_t index) const;
@@ -177,6 +180,7 @@ class MockArchipelagoSocket : public ISocket
     std::vector<int64_t> sentLocations_;
     std::vector<int> statusUpdates_;
     std::vector<SentScoutRequest> scoutRequests_;
+    std::vector<std::string> saidMessages_;
     bool gameFinishedCalled_ = false;
 
     // Item delivery

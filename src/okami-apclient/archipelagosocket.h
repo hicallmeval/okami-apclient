@@ -29,6 +29,7 @@ class ArchipelagoSocket : public ISocket
     void gameFinished() override;
     void poll() override;
     void processMainThreadTasks() override;
+    bool say(const std::string &text) override;
 
     std::string getItemName(int64_t id, int player) const override;
     std::string getLocalItemName(int64_t id) const;
