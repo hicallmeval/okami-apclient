@@ -81,7 +81,7 @@ class APClientMod
 
     static void lateGameInit()
     {
-        wolf::logDebug("main.dll is at 0x%llX", wolf::getModuleBase("main.dll"));
+        wolf::logInfo("APclient Version %s (%s)", version::string.data(), version::hash.data());
         // Initialize game state accessors first
         apgame::initialize();
 
