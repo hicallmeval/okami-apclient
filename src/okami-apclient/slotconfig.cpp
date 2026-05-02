@@ -123,7 +123,7 @@ std::expected<SlotConfig, std::string> SlotConfig::parse(const nlohmann::json &s
         // General options
         .buriedChestsByNight = getBool(slotData, "BuriedChestsByNight", true),
         .karmicTransformers = getInt(slotData, "KarmicTransformers", 1),
-        .openGameStart = getBool(slotData, "OpenGameStart", true),
+        .openGameStart = getBool(slotData, "OpenGameStart", false),
         .progressiveWeapons = getBool(slotData, "ProgressiveWeapons", false),
         .removeBlockHead = getBool(slotData, "RemoveBlockHead", true),
         .bloomGuardianSaplings = getBool(slotData, "BloomGuardianSaplings", true),

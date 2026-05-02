@@ -14,7 +14,7 @@ class ISocket;
  *
  * Reads/writes game state directly from/to the 6 known memory regions,
  * completely bypassing the game's Steam Cloud save pipeline.
- * AP saves are stored as single-slot .oksav files in %APPDATA%/okami-apsaves/.
+ * AP saves are stored as single-slot .OKAMI files in %APPDATA%/okami-apsaves/.
  */
 class SaveMan
 {
@@ -38,7 +38,7 @@ class SaveMan
     /// Check if an AP save exists for the current connection
     [[nodiscard]] bool hasSaveFile() const;
 
-    /// Check if ANY .oksav file exists (doesn't require socket connection)
+    /// Check if ANY .OKAMI file exists (doesn't require socket connection)
     [[nodiscard]] static bool hasAnySaveFile();
 
     /// Delete the AP save for the current connection
@@ -107,7 +107,7 @@ class SaveMan
     // === File I/O ===
     [[nodiscard]] bool writeSlotToFile(const okami::SaveSlot &slot);
 
-    /// Read AP save from .oksav file into slot.
+    /// Read AP save from .OKAMI file into slot.
     /// Test-only. Production loads are serviced by hookOkamiPureRead.
     [[nodiscard]] bool readSlotFromFile(okami::SaveSlot &slot) const;
 

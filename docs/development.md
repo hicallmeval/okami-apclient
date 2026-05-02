@@ -55,14 +55,11 @@ cmake --build --preset x64-clang-debug
 
 ### Build Presets
 
-- `x64-clang-debug` - Debug build with Clang
-- `x64-clang-release` - Release build with Clang
-- `x64-debug` - Debug build with MSVC
-- `x64-release` - Release build with MSVC
-- `linux-cross-debug` - Cross-compile for Windows from Linux using GCC MinGW-w64 (GCC 13.3+ required)
-- `linux-cross-release` - Release cross-compile for Windows from Linux using GCC MinGW-w64
-- `llvm-mingw-cross-debug` - Cross-compile for Windows from Linux using llvm-mingw (recommended)
-- `llvm-mingw-cross-release` - Release cross-compile for Windows from Linux using llvm-mingw
+- `x64-clang-debug` / `x64-clang-release` - Native Windows build with Clang
+- `x64-debug` / `x64-release` - Native Windows build with MSVC
+- `llvm-mingw-cross-debug` / `llvm-mingw-cross-release` - Cross-compile the Windows DLL on Linux using llvm-mingw (recommended Linux toolchain)
+- `linux-cross-debug` / `linux-cross-release` - Cross-compile via GCC MinGW-w64; requires GCC 13.3+, breaks on stock Ubuntu (kept for niche setups)
+- `native-tests-debug` / `native-tests-release` - Linux-native test build; no Windows toolchain needed. Fastest iteration loop for anything testable. The DLL target is excluded; only `apclient-tests` and `apclient-harness-tests` are produced.
 
 ### Linux Cross-Compilation
 
@@ -146,7 +143,7 @@ Visual Studio's CMake integration can be tricky with dependency-heavy projects. 
 1. **Wait for initial configure** to complete (watch the Output window)
 2. **Select build preset** in the toolbar: choose `x64-clang-debug` or `x64-clang-release`
 3. **Select build target** in the dropdown next to the build button:
-   - **Main targets**: `okami-apclient`, `okami-tests`
+   - **Main targets**: `okami-apclient`, `apclient-tests`, `apclient-harness-tests`
    - **Ignore**: All the dependency targets (imgui examples, vcpkg packages, etc.)
    - **Tip**: The target dropdown will be very long due to dependencies - scroll to find your targets
 
@@ -155,7 +152,8 @@ Visual Studio's CMake integration can be tricky with dependency-heavy projects. 
 - **Default startup**: The first target alphabetically will be selected initially
 - **Main targets to use**:
   - `okami-apclient` - The main mod DLL
-  - `okami-tests` - Unit tests
+  - `apclient-tests` - Unit test suite
+  - `apclient-harness-tests` - End-to-end fixture suite
 - **Avoid**: Any targets with names like `example_*`, `*_test`, or vcpkg package names
 
 #### Building
@@ -186,10 +184,10 @@ Use Git Bash on Windows if needed.
 
 ### Code Standards
 
-- **C++23** standard
-- **Descriptive names** - Prefer descriptive names versus super short names
-- **Type safety** - Prefer `MemoryAccessor<T>` operations over raw pointers
-- **Cross-Platform Support** - Try to avoid certain Windows API calls which aren't implemented in Proton
+- **C++23** standard.
+- **Descriptive names** — prefer descriptive names over abbreviations.
+- **Type safety** — prefer `MemoryAccessor<T>` over raw pointer arithmetic for game memory.
+- **Cross-platform** — avoid Windows-API calls Proton doesn't implement. The `llvm-mingw-cross-debug` preset will catch the link errors.
 
 ## Project Structure
 
@@ -204,20 +202,19 @@ Use Git Bash on Windows if needed.
 ### Target Architecture
 
 - **okami-apclient.dll** - Main mod injected into the game (shared library)
-- **okami-tests.exe** - Unit test runner
+- **apclient-tests** - Unit test runner (Catch2)
+- **apclient-harness-tests** - End-to-end fixture runner (Catch2)
 
 ## Dependencies
 
 Dependencies are managed through vcpkg and git submodules:
 
-- **vcpkg packages** - Standard libraries (nlohmann-json, asio, openssl, minhook, etc.)
-- **Git submodules** - Custom dependencies (apclientpp, wswrap, websocketpp, imgui)
+- **vcpkg packages** - Things published on vcpkg (nlohmann-json, asio, openssl, minhook, etc.)
+- **Git submodules** - Everything else (apclientpp, wswrap, websocketpp, imgui)
 
 Key dependencies from the project:
 
 - [apclientpp](https://github.com/black-sliver/apclientpp) - Archipelago client library
-- [wswrap](https://github.com/black-sliver/wswrap) - WebSocket wrapper
-- [websocketpp](https://github.com/zaphoyd/websocketpp) - WebSocket implementation
 - [imgui](https://github.com/ocornut/imgui) - Immediate mode GUI
 
 All dependencies are automatically handled by the build system.
@@ -232,31 +229,46 @@ All dependencies are automatically handled by the build system.
 
 ## Testing
 
-### Unit Tests
+### Running tests
 
-- Run tests with: `cmake --build --preset x64-clang-debug && ./out/build/x64-clang-debug/okami-tests.exe`
-- Tests use Catch2 framework
-- **Write tests** for memory access logic and data structures where possible
-- **Don't worry about coverage** for game integration code that can't be easily mocked
+Two test executables are built by every preset that includes tests:
 
-### Manual Testing
+- **`apclient-tests`** — unit suite (Catch2). One `test_*.cpp` per component at the top of `tests/`.
+- **`apclient-harness-tests`** — end-to-end fixtures. Lives in `tests/harness/`.
 
-Minimum testing requirements:
+Linux iteration loop (no Windows toolchain needed):
 
-1. **Builds without errors**
-2. **Mod loads in-game** without crashing
-3. **Feature works as intended**
-4. **Code is formatted** (`./format.sh` run)
+```bash
+cmake --preset native-tests-debug
+cmake --build build/native-tests-debug
+./build/native-tests-debug/tests/apclient-tests             # all tests
+./build/native-tests-debug/tests/apclient-tests "[regression]"   # filter by Catch2 tag
+./build/native-tests-debug/tests/apclient-tests "test name"      # filter by name substring
+```
 
-### Test Game Setup
+Windows native: `cmake --build --preset x64-clang-debug && ./build/x64-clang-debug/apclient-tests.exe` (and `apclient-harness-tests.exe`).
 
-- Use any Okami HD save file
-- Test with Archipelago connection if networking-related
-- Check console output in the mod for errors
+### Writing tests
 
-### Log Files
+Tests use Catch2 plus the in-tree mock framework at `tests/mocks/`. The mock provides:
 
-Debug logs are automatically saved to `logs/` directory with timestamps. Check logs when debugging issues.
+- `wolf::mock::mockMemory` — a fake byte array that stands in for `main.dll`'s address space.
+- `wolf::mock::reserveMemory(size)` — grows the array to fit your test data.
+- A hook registry — `wolf::hookFunction` records the hook function pointer; `wolf::mock::triggerHook<Fn>(offset, args...)` invokes it directly so your test exercises the hook body without a real game.
+- Stubs for `wolf::giveItem`, the lifecycle callbacks (`onGameTick`, `onPlayStart`, etc.), `wolf::createBitfieldMonitor`, and the logging helpers.
+
+The pattern for tests that need realistic game memory: call `wolf::mock::reserveMemory(largeOffset + sizeof(T))`, write through `apgame::*` accessors, and assert on the values via the same accessors. `test_saveman.cpp` and `test_brush_regression.cpp` are good references.
+
+### Manual testing
+
+Before submitting a PR with non-trivial changes:
+
+1. Code builds without errors on `native-tests-debug` and at least one of `llvm-mingw-cross-debug` / `x64-clang-debug`.
+2. `./format.sh` is clean (CI will fail otherwise).
+3. The mod loads in-game without crashing.
+4. The feature works as intended.
+
+For network-related changes, also test against a real Archipelago server with a connected slot. Watch the in-game console for errors. Debug logs are written to `logs/` with timestamps.
 
 ## Common Development Tasks
 
@@ -339,12 +351,6 @@ panel and press F5. Enter the Windows machine's IP and port when prompted.
 
 This config uses the active CMake preset's build output for symbols (`target.exec-search-paths`), so make sure that
 the same binary you've just built remotely is deployed to the machine running the game.
-
-## Performance Considerations
-
-- **Minimize allocations** in hot paths (game loop, memory monitoring)
-- **Use static containers** where possible
-- **Do not stall the main thread (render(), onGameTick(), etc), ever!** Spawn another thread if you need to.
 
 ## CI/CD Integration
 
