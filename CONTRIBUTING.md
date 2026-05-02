@@ -62,36 +62,28 @@ See the [Development Guide](docs/development.md) for detailed build instructions
 
 ### Code Guidelines
 
-- **Formatting**: We use clang-format. Run `./format.sh` before committing
-- **Testing**: Ensure your changes don't crash the game. Unit tests are welcome where they make sense
-- **Architecture**: Keep game state definitions in `include/okami/gamestate/` and Archipelago-related code in `src/okami-apclient/`
-- **Documentation**: Update relevant docs if you're changing behavior
+- **Run `./format.sh` before committing.** CI fails on unformatted code.
+- **Ensure your changes don't crash the game.** Unit tests welcome where they make sense; see [docs/development.md](docs/development.md) for the writing-tests guide.
+- **Respect the architectural boundary.** Game-side definitions (enums, struct layouts, MSD/save formats) live in `include/okami/`; Archipelago-side code (sockets, managers, UI) lives in `src/okami-apclient/`.
+- **Update the relevant doc if you're changing observable behaviour.**
 
-### What to Test
-
-- Mod loads without crashing
-- Your feature works as intended
-- Existing functionality still works
-- Connection to Archipelago servers (if networking-related)
+Full toolchain, formatting, and code-style details are in [docs/development.md](docs/development.md).
 
 ## Detailed Documentation
 
 For more in-depth information, check the `docs/` folder:
 
-- **[Development Guide](docs/development.md)** - Detailed setup, architecture, and coding standards
-- **[Memory Mapping Guide](https://github.com/Axertin/wolf/blob/master/docs/memory-mapping.md)** - How to contribute reverse engineering discoveries (in WOLF repo)
-
-## Community Guidelines
-
-- **Be respectful** - We're all here to have fun with Okami and Archipelago
-- **Be patient** - This is a volunteer project, responses may take time
-- **Search first** - Check if your issue or question has been addressed before
-- **Provide context** - Help us understand your problem or suggestion
+- **[Development Guide](docs/development.md)** - Toolchain, build presets, code style, writing tests, debugging.
+- **[Architecture](docs/architecture.md)** - Source tree, managers, and general structure.
+- **[Mod Flow](docs/mod-flow.md)** - Runtime trace from launch to first check.
+- **[Server Protocol](docs/server-protocol.md)** - Socket and APWorld API reference (location/item ID schemes, slot_data, version compatibility).
+- **[Save System](docs/save-system.md)** - SaveMan deep-dive.
+- **[Memory Mapping Guide](https://github.com/Axertin/wolf/blob/master/docs/memory-mapping.md)** - How to contribute reverse engineering discoveries (in WOLF repo).
 
 ## Questions?
 
 - **General discussion**: [Archipelago Discord Thread](https://discord.com/channels/731205301247803413/1196620860405067848)
 - **Bug reports**: Use the issue templates
-- **Development questions**: Open a discussion or ask in Discord
+- **Development questions**: Open a discussion / issue or ask in Discord
 
 Thanks for contributing!

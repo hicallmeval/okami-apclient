@@ -29,7 +29,7 @@ struct SlotConfig
     // === General Options ===
     bool buriedChestsByNight = true;   // Buried chests logically require Crescent
     int karmicTransformers = 1;        // 0=excluded, 1=precollected, 2=in_item_pool
-    bool openGameStart = true;         // Remove early events for open start
+    bool openGameStart = false;         // Remove early events for open start
     bool progressiveWeapons = false;   // Progressive weapons vs individual
     bool removeBlockHead = true;       // Remove Blockhead encounters
     bool bloomGuardianSaplings = true; // Bloom guardian saplings at start

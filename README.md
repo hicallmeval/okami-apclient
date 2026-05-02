@@ -1,14 +1,20 @@
 # Okami-apclient
 
-A mod for the Steam release of Ōkami HD that adds [Archipelago](https://archipelago.gg) support and integration, to be used in tandem with the [Okami APWorld](https://github.com/Ragmoa/Archipelago/).
-This mod requires the [WOLF](https://github.com/Axertin/wolf) framework to function.
+A mod for the Steam release of Ōkami HD that lets the game participate in an [Archipelago](https://archipelago.gg) multiworld randomizer. Pair it with the [Okami APWorld](https://github.com/Ragmoa/Archipelago/) on the server side; both are required.
 
-This project follows [Semantic Versioning 2.0.0](https://semver.org/):
+This mod is loaded by the [WOLF](https://github.com/Axertin/wolf) framework, which handles DLL injection and exposes the game's memory, hooks, and UI surface.
 
-- **v0.x.x** = Pre-release, expect breaking changes and missing core functionality
-- **v1.0.0+** = Stable, public-sync-ready releases
+## Status
 
-**While aspects of the mod may be functional or even playable in their current states, it is not recommended to run this in AP syncs yet!**
+**v0.x.x pre-release.** Expect breaking changes between versions; not recommended for live syncs yet. **v1.0.0** will be the first stable, sync-ready release.
+
+What works right now:
+
+- Connecting to an Archipelago server, picking a slot, sending and receiving items.
+- Container randomization, brush randomization, shop randomization.
+- AP-isolated saves (`.OKAMI` files; vanilla saves are untouched).
+
+For a full picture of what the mod actually does at runtime, see [docs/mod-flow.md](docs/mod-flow.md).
 
 ## Installing
 
@@ -20,6 +26,7 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/):
    Okami/
    ├── mods/
    │   └── apclient/
+   │       ├── game-data/
    │       ├── okami-apclient.dll
    │       └── cacert.pem
    ├── wolf-loader.exe
@@ -29,11 +36,7 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/):
 
 4. Launch WOLF (reference [WOLF's quickstart](https://github.com/Axertin/wolf/blob/master/README.md) for exact instructions by platform)
 
-### Useful Keybindings
-
-- `END`, `ALT`, and `SUPER` (`WIN`) will unlock your cursor from the game
-- `HOME` will toggle the visibility of the entire ImGui UI
-- `F2` will toggle the Archipelago login window (it won't appear if the entire UI is invisible)
+Keybindings, console commands, save management, and troubleshooting are covered in [docs/usage.md](docs/usage.md).
 
 ## Building From Source
 
@@ -69,11 +72,12 @@ Contributions are welcome! Please:
 
 ## Project Structure
 
-- `src/okami-apclient/` - Main mod DLL
-- `tests/` - Unit tests
+- `src/okami-apclient/` - Main mod DLL (managers, sockets, UI, AP-side code)
+- `include/okami/` - Game-side data: enums, bitfields, struct layouts, save and MSD formats
+- `tests/` - Unit tests (`apclient-tests`) and end-to-end fixtures (`apclient-harness-tests`)
+- `docs/` - Architecture, runtime trace, server protocol, save system, dev guide, usage
 - `scripts/` - Helper scripts for build-time code generation
-- `include/` - WOLF plugin API and game-specific data structures (enums, bitfields, game state definitions)
-- `external/` - Dependency Git submodules
+- `external/` - Dependency Git submodules (apclientpp, wswrap, websocketpp, imgui, vcpkg)
 - `cmake/` - Build system utilities
 
 ## Acknowledgements

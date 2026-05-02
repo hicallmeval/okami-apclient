@@ -53,7 +53,7 @@ inline constexpr int64_t kContainerBase = 8'000'000'000;
 /**
  * @brief Calculate check ID for brush acquisition
  * @param brushIndex The game's internal brush index
- * @return Archipelago check ID (200000 + brushIndex)
+ * @return Archipelago check ID (kBrushAcquisitionBase + brushIndex)
  */
 inline constexpr int64_t getBrushCheckId(int brushIndex)
 {

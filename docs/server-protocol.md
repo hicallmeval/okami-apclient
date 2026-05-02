@@ -1,329 +1,171 @@
-# Server Protocol Guide
+# Server Protocol Reference
 
-This document describes what the okami-apclient expects from the Archipelago server. If you're working on an Okami APWorld, this is the contract your world needs to fulfill.
+What the okami-apclient sends and expects on the network socket. If you're implementing or maintaining the Okami APWorld, this file is the contract you need to satisfy: location and item ID schemes, slot_data keys, version compatibility, and the recovery flows the client relies on.
 
-The client uses the standard Archipelago protocol via the apclientpp library. This document focuses on Okami-specific details rather than rehashing the general AP protocol (see the [Archipelago Network Protocol](https://github.com/ArchipelagoMW/Archipelago/blob/main/docs/network%20protocol.md) docs for that).
+The client speaks the standard Archipelago protocol via apclientpp, so this document only covers Okami-specific details. For general AP semantics see the [Archipelago Network Protocol](https://github.com/ArchipelagoMW/Archipelago/blob/main/docs/network%20protocol.md) reference.
 
-## Connection Overview
+## Connection
 
-- **Transport**: WebSocket (ws:// for localhost, wss:// for remote servers)
-- **Default port**: 38281
-- **Message format**: JSON (handled by apclientpp)
+- **Transport**: WebSocket. `ws://` for localhost, `wss://` for remote (the client upgrades automatically).
+- **Default port**: 38281.
+- **Message format**: JSON, handled by apclientpp.
 
-The client automatically upgrades to secure WebSocket for non-localhost connections.
+The client requests `items_handling = 0b111 = 7` (receive items for self, receive items for others, starting inventory).
 
-## Connection Handshake
+## Location ID scheme
 
-```
-Client                                    Server
-   │                                         │
-   │──────── WebSocket Connect ─────────────>│
-   │                                         │
-   │<──────── RoomInfo ──────────────────────│
-   │                                         │
-   │──────── ConnectSlot ───────────────────>│
-   │         (slot, password,                │
-   │          item_handling=0b111)           │
-   │                                         │
-   │<──────── Connected ─────────────────────│
-   │         (checked_locations, slot_data)  │
-   │                                         │
-   │──────── StatusUpdate(PLAYING) ─────────>│
-   │                                         │
-```
+Locations are int64s, as defined by the AP spec. Eight categories sit `1e9` apart, with `*1000` slots per inner key (mapId, shopId, levelId). The constants and helpers live in [`src/okami-apclient/checks/check_types.hpp`](../src/okami-apclient/checks/check_types.hpp); read it for the source of truth.
 
-**Item handling bits** (`0b111 = 7`):
+| Category           | Base            | Formula                          | Inner range       |
+| ------------------ | --------------- | -------------------------------- | ----------------- |
+| Brush acquisition  | `1_000_000_000` | `base + brushIndex`              | per brush         |
+| Shop purchase      | `2_000_000_000` | `base + shopId*1000 + itemSlot`  | `slot < 1000`     |
+| World state        | `3_000_000_000` | `base + mapId*1000 + bitIndex`   | `bit < 1000`      |
+| Collected object   | `4_000_000_000` | `base + mapId*1000 + bitIndex`   | `bit < 1000`      |
+| Area restored      | `5_000_000_000` | `base + mapId*1000 + bitIndex`   | `bit < 1000`      |
+| Global flag        | `6_000_000_000` | `base + bitIndex`                | per bit           |
+| Game progress flag | `7_000_000_000` | `base + bitIndex`                | per bit           |
+| Container pickup   | `8_000_000_000` | `base + levelId*1000 + spawnIdx` | `spawnIdx < 1000` |
 
-- Bit 0: Receive items for self
-- Bit 1: Receive items for others
-- Bit 2: Starting inventory
+Worked examples:
 
-We request all three.
+- Brush 5 (Greensprout): `1_000_000_005`.
+- Shop ID 3, slot 7: `2_000_003_007`.
+- Map 12, world-state bit 42: `3_000_012_042`.
+- Level 5, container spawn index 8: `8_000_005_008`.
 
-## Messages the Client Sends
-
-### ConnectSlot
-
-Initial connection with credentials.
-
-```json
-{
-  "cmd": "Connect",
-  "password": "...",
-  "game": "Okami HD",
-  "name": "PlayerSlot",
-  "uuid": "...",
-  "version": { ... },
-  "items_handling": 7,
-  "tags": []
-}
-```
-
-### LocationChecks
-
-Reports completed locations (checks in mod terminology).
-
-```json
-{
-  "cmd": "LocationChecks",
-  "locations": [100042, 200003, 500010015]
-}
-```
-
-Locations are sent in batches when possible. The client deduplicates locally before sending.
-
-### LocationScouts
-
-Requests item information for locations without completing them. Used for shop display and to replace container items on spawn.
-
-```json
-{
-  "cmd": "LocationScouts",
-  "locations": [300001, 300002, 300003],
-  "create_as_hint": 0
-}
-```
-
-The client uses `create_as_hint: 0` (no hint creation) for these purposes, as they aren't actually hints. The client simply needs to know before the location is sent what is there so that it can be displayed correctly.
-
-### StatusUpdate
-
-Sent when gameplay state changes.
-
-```json
-{
-  "cmd": "StatusUpdate",
-  "status": 30
-}
-```
-
-Status values:
-
-- `30` (CLIENT_PLAYING): Normal gameplay
-- `50` (CLIENT_GOAL): Game completed
-
-### Sync
-
-Requests full state resync when desync is detected.
-
-```json
-{
-  "cmd": "Sync"
-}
-```
-
-## Messages the Client Expects
-
-### RoomInfo
-
-Triggers the connection handshake. Standard AP format.
-
-### Connected
-
-Contains initial game state:
-
-```json
-{
-  "cmd": "Connected",
-  "team": 0,
-  "slot": 1,
-  "players": [...],
-  "missing_locations": [...],
-  "checked_locations": [100001, 100002, ...],
-  "slot_data": { ... }
-}
-```
-
-**`checked_locations`**: List of locations the server already has. The client syncs its local cache with this and resends any missing checks.
-
-**`slot_data`**: Game-specific configuration. See [slot_data](#slot_data-format) below.
-
-### ReceivedItems
-
-Items granted to the player:
-
-```json
-{
-  "cmd": "ReceivedItems",
-  "index": 0,
-  "items": [
-    {
-      "item": 256,
-      "location": 100042,
-      "player": 2,
-      "flags": 0,
-      "index": 0
-    },
-    ...
-  ]
-}
-```
-
-**Index handling**:
-
-- `index: 0` in the message indicates a full inventory sync (reconnect scenario)
-- Each item has its own index for ordering
-- Gaps in indices trigger desync recovery
-
-The client persists the last processed index to disk (`%APPDATA%\okami-apsaves\{slot}_{seed}.save`) and skips already-processed items on reconnect.
-
-### LocationInfo
-
-Response to LocationScouts:
-
-```json
-{
-  "cmd": "LocationInfo",
-  "locations": [
-    {
-      "item": 258,
-      "location": 300001,
-      "player": 1,
-      "flags": 0
-    },
-    ...
-  ]
-}
-```
-
-Used by the shop system to display what items are available before purchase.
-
-### ConnectionRefused / PrintJSON
-
-Error conditions. The client logs these and updates the UI status.
+The categories sit far enough apart that `getCheckCategory(id)` can decode by simple range comparison. The bit-index conversion between WOLF's monitor (LSB-0) and the game's `BitField<N>` (MSB-0 within each 32-bit word) is handled by `monitorToGameBitIndex` — APWorld implementers report the WOLF index, so they don't need to think about it directly.
 
 ---
 
-## Location ID Scheme
+## Item ID scheme
 
-The client expects locations to follow this ID scheme. The APWorld should define locations with matching IDs.
+Items are int64s. Ranges are defined in [`src/okami-apclient/rewards/reward_types.hpp`](../src/okami-apclient/rewards/reward_types.hpp).
 
-| Category | Formula | Range |
-| ---------- | --------- | ------- |
-| Item Pickup | `100000 + itemId` | 100000-100255 |
-| Brush Acquisition | `200000 + brushIndex` | 200000-200021 |
-| Shop Purchase | `300000 + (shopId × 1000) + slot` | 300000-399999 |
-| World State | `400000 + (mapId × 10000) + bitIndex` | 400000-499999 |
-| Collected Object | `500000 + (mapId × 10000) + bitIndex` | 500000-599999 |
-| Area Restored | `600000 + (mapId × 10000) + bitIndex` | 600000-699999 |
-| Global Flag | `700000 + bitIndex` | 700000-700031 |
-| Game Progress | `800000 + bitIndex` | 800000-800031 |
-| Container | `900000 + (levelId << 8) + spawnIdx` | 900000-999999 |
+| Range           | Category            | Mapping                                             |
+| --------------- | ------------------- | --------------------------------------------------- |
+| `0x00`-`0xFF`   | Game items          | AP ID == game item ID, granted via `wolf::giveItem` |
+| `0x100`-`0x11E` | Brushes             | `brushIndex = apItemId - 0x100`                     |
+| `0x300`-`0x302` | Progressive weapons | Multi-tier; see below                               |
+| `0x303`-`0x308` | Event flags         | Story progression bits                              |
 
-**Note**: This scheme is subject to change as we finalize the APWorld.
+IDs outside these ranges are treated as `RewardCategory::Unknown` and logged as an error.
 
-### Container ID Encoding
+### Progressive weapons
 
-Container IDs pack two values:
+Each progressive weapon advances one stage per receipt. Stage indexing is in `rewards::getCategory` and the weapon handler.
 
-- `levelId`: 0-255 (which map the container is in)
-- `spawnIdx`: 0-255 (index in that map's spawn table)
+| AP ID   | Item               | Stages                                                                                                              |
+| ------- | ------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `0x300` | Progressive Mirror | Trinity Mirror (`0x13`) -> Solar Flare (`0x14`)                                                                     |
+| `0x301` | Progressive Rosary | Devout (`0x15`) -> Life (`0x16`) -> Exorcism (`0x17`) -> Resurrection (`0x18`) -> Tundra (`0x19`)                   |
+| `0x302` | Progressive Sword  | Tsumugari (`0x1A`) -> Seven Strike (`0x1B`) -> Kusanagi (`0x1C`) -> Eighth Wonder (`0x1D`) -> Thunder Edge (`0x1E`) |
 
-Formula: `900000 + (levelId << 8) + spawnIdx`
+### Progressive brushes
 
-Example: Level 5, spawn index 42 → `900000 + (5 << 8) + 42 = 901322`
+Power Slash and Cherry Bomb have multi-stage upgrades within the brush range. The first receipt grants the base technique; subsequent receipts set upgrade bits in the brush bitfield (which is big-endian within each word — see `okami::BitField<N>`).
 
-### Shop ID Encoding
+| AP ID   | Brush       | Stages                                              |
+| ------- | ----------- | --------------------------------------------------- |
+| `0x102` | Power Slash | base -> PS2 (upgrade bit 0) -> PS3 (upgrade bit 10) |
+| `0x103` | Cherry Bomb | base -> CB2 (upgrade bit 6) -> CB3 (upgrade bit 11) |
 
-Shop IDs pack shop identifier and slot:
+### Item flags
 
-- `shopId`: Which shop (numbered 0-N)
-- `slot`: Which slot in that shop's inventory (0-N)
+The standard AP `flags` bitfield is honoured:
 
-Formula: `300000 + (shopId × 1000) + slot`
-
-Example: Shop 3, slot 7 → `300000 + 3000 + 7 = 303007`
-
----
-
-## Item ID Scheme
-
-The APWorld should define items with these IDs:
-
-| Range | Category | Notes |
-| ------- | ---------- | ------- |
-| 0x00-0xFF | Game Items | Direct inventory items; AP ID = game item ID |
-| 0x100-0x115 | Brushes | `brushIndex = apItemId - 0x100` |
-| 0x300 | Progressive Mirror | Trinity Mirror → Solar Flare |
-| 0x301 | Progressive Rosary | 5-stage progression |
-| 0x302 | Progressive Sword | 5-stage progression |
-| 0x303-0x308 | Event Flags | Story progression bits |
-
-### Progressive Items
-
-These items upgrade through multiple tiers when received multiple times:
-
-**Progressive Weapons**:
-
-| AP ID | Name | Stages |
-| ------- | ------ | -------- |
-| 0x300 | Progressive Mirror | Trinity Mirror (0x13) → Solar Flare (0x14) |
-| 0x301 | Progressive Rosary | Devout (0x15) → Life (0x16) → Exorcism (0x17) → Resurrection (0x18) → Tundra (0x19) |
-| 0x302 | Progressive Sword | Tsumugari (0x1A) → Seven Strike (0x1B) → Kusanagi (0x1C) → Eighth Wonder (0x1D) → Thunder Edge (0x1E) |
-
-**Progressive Brushes**:
-
-| AP ID | Name | Stages |
-| ------- | ------ | -------- |
-| 0x102 | Power Slash | Base → PS2 (upgrade bit 0) → PS3 (upgrade bit 10) |
-| 0x103 | Cherry Bomb | Base → CB2 (upgrade bit 6) → CB3 (upgrade bit 11) |
+| Bit   | Name        | Effect                                         |
+| ----- | ----------- | ---------------------------------------------- |
+| `0x1` | Progression | Item icon gets the progression treatment       |
+| `0x2` | Useful      | (Reserved; no special handling beyond display) |
+| `0x4` | Trap        | Item icon gets the trap treatment              |
 
 ---
 
-## slot_data Format
+## slot_data
 
-The client parses `slot_data` for various options and other information:
+Sent in `Connected.slot_data`. The client parses these keys in `SlotConfig::parse`. Missing or malformed fields fall back to the listed default rather than failing the connection, so an old client can connect to a newer server's slot as long as the server-required keys are present.
 
-```json
-{
-  "slot_data": {
-    "SeedNumber": "64715609337703266491",
-    "SeedName": "43126361899033089832",
-    "TotalLocations": 190,
+### Session info
 
-    "supported_client_version": "0.0.0",
+| Key                        | Type           | Default | Notes                                                         |
+| -------------------------- | -------------- | ------- | ------------------------------------------------------------- |
+| `SeedNumber`               | string         | `""`    | Unique seed identifier; baked into save filenames             |
+| `SeedName`                 | string         | `""`    | Human-readable seed label                                     |
+| `TotalLocations`           | int (optional) | unset   | If set, used to render check-count progress                   |
+| `supported_client_version` | string         | `""`    | Minimum client semver the APWorld expects (see compatibility) |
 
-    "randomize_containers": true,
-    "randomize_shops": true,
-    "randomize_brushes": true,
+### Randomization toggles
 
-    ...
-    (etc)
-  }
-}
-```
+| Key                   | Type | Default |
+| --------------------- | ---- | ------- |
+| `RandomizeContainers` | bool | `false` |
+| `RandomizeShops`      | bool | `false` |
+| `RandomizeBrushes`    | bool | `false` |
 
----
+### General options
 
-## Error Recovery
+| Key                     | Type | Default | Notes                                                |
+| ----------------------- | ---- | ------- | ---------------------------------------------------- |
+| `BuriedChestsByNight`   | bool | `true`  | Buried chests logically require Crescent             |
+| `KarmicTransformers`    | int  | `1`     | `0`=excluded, `1`=precollected, `2`=in item pool     |
+| `OpenGameStart`         | bool | `false` | Skip early-game cutscenes for an open start          |
+| `ProgressiveWeapons`    | bool | `false` | Use progressive weapon items vs. individual upgrades |
+| `RemoveBlockHead`       | bool | `true`  | Remove Blockhead encounters                          |
+| `BloomGuardianSaplings` | bool | `true`  | Bloom guardian saplings at start                     |
 
-### Connection Timeout
+### Orochi arc
 
-The client waits 10 seconds for connection. If `slot_connected` doesn't arrive, it marks the connection as failed.
+| Key                | Type | Default | Notes                                              |
+| ------------------ | ---- | ------- | -------------------------------------------------- |
+| `RequiredDoggorbs` | int  | `1`     | Canine warriors needed for Gale Shrine (range 1-8) |
+| `CanineRewards`    | int  | `1`     | `0`=vanilla, `1`=randomized, `2`=junk              |
+| `MoonCaveAccess`   | int  | `0`     | `0`=serpent_crystal, `1`=crimson_helm, `2`=open    |
 
-### Item Index Gaps
+### Other
 
-Gaps in received item indices trigger a full resync:
-
-```
-Client detects gap → Sync → Resend all checks
-```
-
-### Reconnection
-
-On reconnect:
-
-1. Client loads last processed item index from disk
-2. Server sends full inventory (index 0)
-3. Client skips items up to saved index
-4. Client processes new items
-5. Client syncs checked_locations and resends any missing
+| Key         | Type | Default |
+| ----------- | ---- | ------- |
+| `ShopSlots` | int  | `6`     |
 
 ---
 
-## What's Next?
+## Version compatibility
 
-For more context on how the client uses this protocol, see:
+The client reports its semver in `Connect.version`. The server's expected version is in `slot_data.supported_client_version`. Compatibility is decided by `version_utils::checkCompatibility`:
 
-- [Architecture Guide](architecture.md) - Code structure
-- [Mod Flow Guide](mod-flow.md) - Runtime behavior
+- **Major version mismatch**: incompatible. Connection refused with a clear message.
+- **Major 0.x.y (pre-release)**: minor versions must match exactly. Pre-1.0 the API is unstable, so every minor bump is a potential break.
+- **Major 1+**: client's minor must be `>=` server's. A client running 1.3.x can connect to a slot that needed 1.2.x; the reverse fails.
+- **Patch and pre-release suffixes** (`-dev.21`, `+build.456`) are parsed but ignored for compatibility decisions.
+
+When publishing an APWorld, set `supported_client_version` to the lowest client semver that has the features you depend on.
+
+---
+
+## Recovery flows
+
+### Connection timeout
+
+The client waits 10 seconds for `Connected` after sending `Connect`. If it doesn't arrive, the login window reports the connection as failed; nothing is persisted.
+
+### Item index gaps
+
+Gaps between `ReceivedItems.items[*].index` values mean the client missed a packet. The client sends `Sync` and the server replays the full inventory with `index: 0`. Already-processed items are skipped via the on-disk index.
+
+### Reconnect
+
+1. Client loads the last processed item index from `%APPDATA%/okami-apsaves/{slot}_{seed}.save`.
+2. Server sends full inventory (`index: 0`).
+3. Client skips items at or below the saved index.
+4. Client processes new items.
+5. Client merges its `checked_locations` cache with the server's and resends any local-only entries.
+
+Same-saved-index reconnects are idempotent; the client tolerates seeing every item twice.
+
+---
+
+## See also
+
+- [Architecture](architecture.md) — code-side model.
+- [Mod flow](mod-flow.md) — runtime trace from launch to first check.

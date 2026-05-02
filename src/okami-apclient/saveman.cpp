@@ -190,7 +190,7 @@ static int32_t __fastcall hookSteamGetFileSize(void *pThis, const char *pchFile)
 // lambda flips a flag in the tracking struct's first byte.
 //
 // Intercepting here lets us:
-//   1. Write AP data to the .oksav file directly.
+//   1. Write AP data to the .OKAMI file directly.
 //   2. Skip the Steam call entirely -- no handle to manage, no Steam Cloud
 //      touch (no OKAMI.apstub pollution).
 //   3. Zero the tracking struct so the caller's cleanup guards
@@ -219,7 +219,7 @@ static void *__fastcall hookOkamiWriteKickoff(void *pTracking, const char *pchFi
 
             if (!isRealSave)
             {
-                wolf::logInfo("[SaveMan] OKAMI write kickoff: empty-slot scaffolding, skipping .oksav "
+                wolf::logInfo("[SaveMan] OKAMI write kickoff: empty-slot scaffolding, skipping .OKAMI "
                               "(%u bytes, Steam still bypassed)",
                               cubData);
             }
@@ -274,7 +274,7 @@ static void *__fastcall hookOkamiWriteKickoff(void *pTracking, const char *pchFi
 // The game's pure-read path passes (dir, filename, offset, userBuffer, &size)
 // to FUN_18014f580, which does FileExists + GetFileSize + FileReadAsync and
 // busy-waits on a completion lambda. Because the user buffer is an explicit
-// parameter, we can memcpy .oksav directly into it and skip the Steam round
+// parameter, we can memcpy .OKAMI directly into it and skip the Steam round
 // trip entirely. Return value 0 = success; 0x8002b40b = file missing/empty
 // (matches the original's error path).
 // hx::String payload pointer lives at +0x08 of the struct; null -> empty string.
@@ -366,7 +366,7 @@ static unsigned char __fastcall hookSaveGate(void *pMcSave)
     return s_origSaveGate(pMcSave);
 }
 
-/// Hook: cMcSave constructor -- when AP connected, snapshot game state to .oksav.
+/// Hook: cMcSave constructor -- when AP connected, snapshot game state to .OKAMI.
 /// The vanilla ctor still runs afterward, but hookSaveGate returns 0 so the state
 /// machine skips directly to cleanup -- no save slot picker, no Steam Cloud write.
 static void __fastcall hookMcSaveCtor(void *pContext)
@@ -520,7 +520,7 @@ bool SaveMan::hasAnySaveFile()
             return false;
         for (const auto &entry : std::filesystem::directory_iterator(SAVE_DIR))
         {
-            if (entry.path().extension() == ".oksav")
+            if (entry.path().extension() == ".OKAMI")
                 return true;
         }
     }
@@ -661,7 +661,7 @@ std::string SaveMan::getSavePath() const
     if (saveKey.empty())
         return {};
 
-    return (std::filesystem::path(SAVE_DIR) / (saveKey + ".oksav")).string();
+    return (std::filesystem::path(SAVE_DIR) / (saveKey + ".OKAMI")).string();
 }
 
 // =============================================================================
