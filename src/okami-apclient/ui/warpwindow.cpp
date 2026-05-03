@@ -2,10 +2,12 @@
 
 #include <algorithm>
 #include <cstring>
+#include <numbers>
 #include <string>
 
 #include <okami/maps.hpp>
 #include <okami/warp.hpp>
+#include <okami/warp_entries.hpp>
 #include <wolf_framework.hpp>
 
 #include "../checkman.h"
@@ -59,7 +61,7 @@ static void renderCurrentMap();
 static void renderPresetSelection();
 static void renderManualCoordinates();
 static void renderWarpButton();
-static void executeWarp(const okami::WarpData &data);
+static void executeWarp(const okami::WarpData &data, bool useJmpOverride);
 
 void initialize(CheckMan &checkMan)
 {
@@ -213,7 +215,7 @@ static void renderManualCoordinates()
                                     static_cast<uint8_t>(g_manualJumpID),
                                     static_cast<uint8_t>(g_manualFlipCamera),
                                     0};
-            executeWarp(data);
+            executeWarp(data, /*useJmpOverride=*/false);
         }
 
         // Button to copy selected preset to manual fields
@@ -256,7 +258,7 @@ static void renderWarpButton()
         if (canWarp)
         {
             const auto &preset = (*presets)[g_selectedPreset];
-            executeWarp(preset.data);
+            executeWarp(preset.data, /*useJmpOverride=*/true);
         }
     }
 
@@ -267,19 +269,17 @@ static void renderWarpButton()
 #endif
 }
 
-static void executeWarp(const okami::WarpData &data)
+static void executeWarp(const okami::WarpData &data, bool useJmpOverride)
 {
     // Write the warp fields ourselves and fire the engine's own trigger
-    // function. The legacy path set bit 1 at 0xB6B2AF directly; that's the
-    // same bit the engine's trigger sets, but the engine's trigger ALSO sets
-    // the area-load flags at 0xB6B2A0 (mask 0x6001000) and runs the
-    // screen-fade / overlay setup. Skipping that bookkeeping caused visual
-    // and state glitches downstream.
+    // function. The trigger sets the area-load flags at 0xB6B2A0 and runs
+    // the screen-fade / overlay setup that a bare bit-poke skipped.
     //
-    // Writing the buffer ourselves (rather than going through the engine's
-    // "warp to coords" populator at 0x489160) keeps the caller-supplied
-    // jumpID intact, so non-0xFF entries continue to use their loading zone
-    // on the target map.
+    // Preset warps pass useJmpOverride=true: replace the preset's coords
+    // with the engine's own canonical entry coords (sourced from the per-map
+    // JMP tables, see warp_entries.hpp) so every preset lands inside
+    // walkable geometry. Manual coord entries pass false to honour exactly
+    // what the user typed.
     const uintptr_t base = wolf::getModuleBase("main.dll");
     if (base == 0)
     {
@@ -287,8 +287,19 @@ static void executeWarp(const okami::WarpData &data)
         return;
     }
 
+    okami::WarpData resolved = data;
+    const auto entry = useJmpOverride ? okami::warp::lookupEntry(data.mapID) : std::nullopt;
+    if (entry)
+    {
+        resolved.x = static_cast<float>(entry->x);
+        resolved.y = static_cast<float>(entry->y);
+        resolved.z = static_cast<float>(entry->z);
+        resolved.facingDirection = static_cast<float>(entry->facingDeg) * (std::numbers::pi_v<float> / 180.0f);
+        resolved.jumpID = 0xFF;
+    }
+
     auto *warpPtr = reinterpret_cast<okami::WarpData *>(base + okami::main::warpData);
-    *warpPtr = data;
+    *warpPtr = resolved;
 
     // Suppress check sending across the warp transition. The map's init
     // flips state bits (brushes, world-state, etc.) that look like
@@ -303,7 +314,7 @@ static void executeWarp(const okami::WarpData &data)
     auto *buffer = reinterpret_cast<void *>(base + okami::main::warpDataBuffer);
     trigger(buffer);
 
-    wolf::logInfo("[Warp] Initiated warp to map 0x%04X (jumpID=0x%02X) at (%.1f, %.1f, %.1f)", data.mapID, data.jumpID, data.x, data.y, data.z);
+    wolf::logInfo("[Warp] Initiated warp to map 0x%04X at (%.1f, %.1f, %.1f)", resolved.mapID, resolved.x, resolved.y, resolved.z);
 }
 
 } // namespace warpwindow
