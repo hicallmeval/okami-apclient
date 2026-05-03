@@ -6,16 +6,18 @@
 namespace okami
 {
 
-/// Warp data structure at main.dll+0xB65E64 (20 bytes)
-/// Used to set the destination for map transitions
+/// Warp data structure at main.dll+0xB65E64 (20 bytes).
+/// Used to set the destination for map transitions.
 struct WarpData
 {
     float x;               // +0x00: Target X coordinate
     float y;               // +0x04: Target Y coordinate
     float z;               // +0x08: Target Z coordinate
-    float facingDirection; // +0x0C: Target facing angle
+    float facingDirection; // +0x0C: Target facing angle (radians)
     uint16_t mapID;        // +0x10: Target map ID
-    uint8_t jumpID;        // +0x12: Loading zone ID (0xFF = use map default spawn)
+    uint8_t jumpID;        // +0x12: Loading-zone ID. 0xFF means "use the X/Y/Z above";
+                           //        any other value picks loading zone N on the target map and
+                           //        uses that zone's stored coords (X/Y/Z above are ignored).
     uint8_t flipCamera;    // +0x13: Interior loading zone ID
     uint32_t unknown;      // +0x14: Unknown purpose (possibly padding or reserved)
 };
@@ -177,11 +179,24 @@ inline const std::vector<Category> AllCategories = {
 
 namespace main
 {
-/// Warp data structure address
+/// Engine warp-data buffer base. Our WarpData struct begins at +4 of this
+/// (the X coordinate); the leading 4 bytes and trailing 4 bytes (+0x18..+0x1B
+/// is our `unknown`; +0x1C..+0x1F is engine-only) are engine state we don't
+/// model. Don't memset past the struct.
+constexpr uintptr_t warpDataBuffer = 0xB65E60;
+
+/// Address of the WarpData struct within the engine buffer (= warpDataBuffer + 4).
 constexpr uintptr_t warpData = 0xB65E64;
 
-/// Map load trigger flag address (bit 1 triggers warp)
-constexpr uintptr_t mapLoadFlags = 0xB6B2AF;
+/// Engine warp-trigger function. Reads the warp buffer that the caller has
+/// already populated and fires the map load with all the bookkeeping the
+/// engine itself relies on: sets the trigger bit at 0xB6B2AC bit 25, sets
+/// the area-load flags at 0xB6B2A0 (mask 0x6001000), and runs the screen-
+/// fade / overlay setup. Honors the buffer's jumpID, so this works for both
+/// "use caller-supplied X/Y/Z" (jumpID=0xFF) and "use loading zone N on the
+/// target map" (jumpID != 0xFF) cases. Decompiled signature:
+///   void(longlong buffer)
+constexpr uintptr_t triggerWarpFn = 0x489770;
 } // namespace main
 
 } // namespace okami

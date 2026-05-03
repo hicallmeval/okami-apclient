@@ -16,8 +16,9 @@
 
 namespace
 {
-// Game Memory Constants (cross-platform)
-constexpr uint8_t WARP_TRIGGER_FLAG = 0x02;
+// Engine warp-trigger function. Reads the already-populated warp buffer and
+// fires the map load with the area-load / fade bookkeeping.
+using TriggerWarpFn = void (*)(void *buffer);
 
 #ifdef _WIN32
 // UI Layout Constants (Windows-only, used in ImGui code)
@@ -265,28 +266,32 @@ static void renderWarpButton()
 
 static void executeWarp(const okami::WarpData &data)
 {
-    // Write warp data to game memory using direct pointer access
-    okami::WarpData *warpPtr = apgame::warpData.get_ptr();
-    if (!warpPtr)
+    // Write the warp fields ourselves and fire the engine's own trigger
+    // function. The legacy path set bit 1 at 0xB6B2AF directly; that's the
+    // same bit the engine's trigger sets, but the engine's trigger ALSO sets
+    // the area-load flags at 0xB6B2A0 (mask 0x6001000) and runs the
+    // screen-fade / overlay setup. Skipping that bookkeeping caused visual
+    // and state glitches downstream.
+    //
+    // Writing the buffer ourselves (rather than going through the engine's
+    // "warp to coords" populator at 0x489160) keeps the caller-supplied
+    // jumpID intact, so non-0xFF entries continue to use their loading zone
+    // on the target map.
+    const uintptr_t base = wolf::getModuleBase("main.dll");
+    if (base == 0)
     {
-        wolf::logError("[Warp] Failed to get warp data pointer");
+        wolf::logError("[Warp] main.dll base unavailable");
         return;
     }
 
-    uint8_t *flagsPtr = apgame::mapLoadFlags.get_ptr();
-    if (!flagsPtr)
-    {
-        wolf::logError("[Warp] Failed to get map load flags pointer");
-        return;
-    }
-
+    auto *warpPtr = reinterpret_cast<okami::WarpData *>(base + okami::main::warpData);
     *warpPtr = data;
 
-    // Set the trigger bit to initiate warp
-    // Bit 1 (value 0x02) triggers the warp
-    *flagsPtr |= WARP_TRIGGER_FLAG;
+    auto trigger = reinterpret_cast<TriggerWarpFn>(base + okami::main::triggerWarpFn);
+    auto *buffer = reinterpret_cast<void *>(base + okami::main::warpDataBuffer);
+    trigger(buffer);
 
-    wolf::logInfo("[Warp] Initiated warp to map 0x%04X at (%.1f, %.1f, %.1f)", data.mapID, data.x, data.y, data.z);
+    wolf::logInfo("[Warp] Initiated warp to map 0x%04X (jumpID=0x%02X) at (%.1f, %.1f, %.1f)", data.mapID, data.jumpID, data.x, data.y, data.z);
 }
 
 } // namespace warpwindow
