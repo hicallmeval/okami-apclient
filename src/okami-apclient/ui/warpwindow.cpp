@@ -2,12 +2,15 @@
 
 #include <algorithm>
 #include <cstring>
+#include <numbers>
 #include <string>
 
 #include <okami/maps.hpp>
 #include <okami/warp.hpp>
+#include <okami/warp_entries.hpp>
 #include <wolf_framework.hpp>
 
+#include "../checkman.h"
 #include "../gamestate_accessors.hpp"
 
 #ifdef _WIN32
@@ -16,8 +19,9 @@
 
 namespace
 {
-// Game Memory Constants (cross-platform)
-constexpr uint8_t WARP_TRIGGER_FLAG = 0x02;
+// Engine warp-trigger function. Reads the already-populated warp buffer and
+// fires the map load with the area-load / fade bookkeeping.
+using TriggerWarpFn = void (*)(void *buffer);
 
 #ifdef _WIN32
 // UI Layout Constants (Windows-only, used in ImGui code)
@@ -38,6 +42,7 @@ constexpr int MAX_FLIP_CAMERA = 0xFF;
 static bool g_visible = false;
 static size_t g_selectedCategory = 0;
 static size_t g_selectedPreset = 0;
+static CheckMan *g_checkMan = nullptr;
 
 // Manual coordinate entry (for custom warps)
 static float g_manualX = 0.0f;
@@ -56,13 +61,14 @@ static void renderCurrentMap();
 static void renderPresetSelection();
 static void renderManualCoordinates();
 static void renderWarpButton();
-static void executeWarp(const okami::WarpData &data);
+static void executeWarp(const okami::WarpData &data, bool useJmpOverride);
 
-void initialize()
+void initialize(CheckMan &checkMan)
 {
     g_visible = false;
     g_selectedCategory = 0;
     g_selectedPreset = 0;
+    g_checkMan = &checkMan;
 
     wolf::addCommand("warps", []([[maybe_unused]] const std::vector<std::string> &args) { g_visible = true; }, "Enable the warps menu");
 }
@@ -209,7 +215,7 @@ static void renderManualCoordinates()
                                     static_cast<uint8_t>(g_manualJumpID),
                                     static_cast<uint8_t>(g_manualFlipCamera),
                                     0};
-            executeWarp(data);
+            executeWarp(data, /*useJmpOverride=*/false);
         }
 
         // Button to copy selected preset to manual fields
@@ -252,7 +258,7 @@ static void renderWarpButton()
         if (canWarp)
         {
             const auto &preset = (*presets)[g_selectedPreset];
-            executeWarp(preset.data);
+            executeWarp(preset.data, /*useJmpOverride=*/true);
         }
     }
 
@@ -263,30 +269,52 @@ static void renderWarpButton()
 #endif
 }
 
-static void executeWarp(const okami::WarpData &data)
+static void executeWarp(const okami::WarpData &data, bool useJmpOverride)
 {
-    // Write warp data to game memory using direct pointer access
-    okami::WarpData *warpPtr = apgame::warpData.get_ptr();
-    if (!warpPtr)
+    // Write the warp fields ourselves and fire the engine's own trigger
+    // function. The trigger sets the area-load flags at 0xB6B2A0 and runs
+    // the screen-fade / overlay setup that a bare bit-poke skipped.
+    //
+    // Preset warps pass useJmpOverride=true: replace the preset's coords
+    // with the engine's own canonical entry coords (sourced from the per-map
+    // JMP tables, see warp_entries.hpp) so every preset lands inside
+    // walkable geometry. Manual coord entries pass false to honour exactly
+    // what the user typed.
+    const uintptr_t base = wolf::getModuleBase("main.dll");
+    if (base == 0)
     {
-        wolf::logError("[Warp] Failed to get warp data pointer");
+        wolf::logError("[Warp] main.dll base unavailable");
         return;
     }
 
-    uint8_t *flagsPtr = apgame::mapLoadFlags.get_ptr();
-    if (!flagsPtr)
+    okami::WarpData resolved = data;
+    const auto entry = useJmpOverride ? okami::warp::lookupEntry(data.mapID) : std::nullopt;
+    if (entry)
     {
-        wolf::logError("[Warp] Failed to get map load flags pointer");
-        return;
+        resolved.x = static_cast<float>(entry->x);
+        resolved.y = static_cast<float>(entry->y);
+        resolved.z = static_cast<float>(entry->z);
+        resolved.facingDirection = static_cast<float>(entry->facingDeg) * (std::numbers::pi_v<float> / 180.0f);
+        resolved.jumpID = 0xFF;
     }
 
-    *warpPtr = data;
+    auto *warpPtr = reinterpret_cast<okami::WarpData *>(base + okami::main::warpData);
+    *warpPtr = resolved;
 
-    // Set the trigger bit to initiate warp
-    // Bit 1 (value 0x02) triggers the warp
-    *flagsPtr |= WARP_TRIGGER_FLAG;
+    // Suppress check sending across the warp transition. The map's init
+    // flips state bits (brushes, world-state, etc.) that look like
+    // legitimate 0->1 transitions to our monitors, but they're not real
+    // gameplay events. The post-load onPlayStart re-enables sending.
+    if (g_checkMan)
+    {
+        g_checkMan->enableSending(false);
+    }
 
-    wolf::logInfo("[Warp] Initiated warp to map 0x%04X at (%.1f, %.1f, %.1f)", data.mapID, data.x, data.y, data.z);
+    auto trigger = reinterpret_cast<TriggerWarpFn>(base + okami::main::triggerWarpFn);
+    auto *buffer = reinterpret_cast<void *>(base + okami::main::warpDataBuffer);
+    trigger(buffer);
+
+    wolf::logInfo("[Warp] Initiated warp to map 0x%04X at (%.1f, %.1f, %.1f)", resolved.mapID, resolved.x, resolved.y, resolved.z);
 }
 
 } // namespace warpwindow

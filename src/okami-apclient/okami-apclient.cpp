@@ -111,7 +111,7 @@ class APClientMod
         initializeGui();
         loginwindow::initialize(ArchipelagoSocket::instance());
         loginwindow::setSaveMan(g_saveMan.get());
-        warpwindow::initialize();
+        warpwindow::initialize(*g_checkMan);
 
         g_checkMan->initialize();
 

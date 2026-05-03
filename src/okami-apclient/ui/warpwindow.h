@@ -4,15 +4,19 @@
 #define NOMINMAX
 #endif
 
+class CheckMan;
+
 namespace warpwindow
 {
 
 /**
  * @brief Initialize Warp Window state
  *
- * Call this once during mod initialization.
+ * Call this once during mod initialization. The CheckMan reference is
+ * used to suppress check sending during a warp transition; the post-load
+ * onPlayStart callback re-enables sending automatically.
  */
-void initialize();
+void initialize(CheckMan &checkMan);
 
 /**
  * @brief Cleanup Warp Window resources

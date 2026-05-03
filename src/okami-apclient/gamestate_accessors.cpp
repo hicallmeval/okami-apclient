@@ -17,10 +17,6 @@ Accessor<okami::CollectionData> collectionData;
 Accessor<okami::WorldStateData> worldStateData;
 Accessor<okami::TrackerData> trackerData;
 
-// Warp system accessors
-Accessor<okami::WarpData> warpData;
-Accessor<uint8_t> mapLoadFlags;
-
 // Item parameter table accessor
 Accessor<std::array<okami::ItemParam, okami::ItemTypes::NUM_ITEM_TYPES>> itemParams;
 
@@ -53,10 +49,6 @@ void initialize()
 
     // Brush upgrades from TrackerData
     brushUpgrades = BitFieldAccessor<32>("main.dll", trackerDataAddr + offsetof(okami::TrackerData, brushUpgrades));
-
-    // Warp system accessors
-    warpData = Accessor<okami::WarpData>("main.dll", okami::main::warpData);
-    mapLoadFlags = Accessor<uint8_t>("main.dll", okami::main::mapLoadFlags);
 
     // Item parameter table
     constexpr uintptr_t itemParamsAddr = 0x7AB220;

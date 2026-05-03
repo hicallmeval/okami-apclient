@@ -32,10 +32,6 @@ extern Accessor<okami::CollectionData> collectionData;
 extern Accessor<okami::WorldStateData> worldStateData;
 extern Accessor<okami::TrackerData> trackerData;
 
-// Warp system accessors
-extern Accessor<okami::WarpData> warpData;
-extern Accessor<uint8_t> mapLoadFlags;
-
 // Item parameter table accessor
 extern Accessor<std::array<okami::ItemParam, okami::ItemTypes::NUM_ITEM_TYPES>> itemParams;
 
