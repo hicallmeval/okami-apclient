@@ -8,6 +8,7 @@
 #include <okami/warp.hpp>
 #include <wolf_framework.hpp>
 
+#include "../checkman.h"
 #include "../gamestate_accessors.hpp"
 
 #ifdef _WIN32
@@ -39,6 +40,7 @@ constexpr int MAX_FLIP_CAMERA = 0xFF;
 static bool g_visible = false;
 static size_t g_selectedCategory = 0;
 static size_t g_selectedPreset = 0;
+static CheckMan *g_checkMan = nullptr;
 
 // Manual coordinate entry (for custom warps)
 static float g_manualX = 0.0f;
@@ -59,11 +61,12 @@ static void renderManualCoordinates();
 static void renderWarpButton();
 static void executeWarp(const okami::WarpData &data);
 
-void initialize()
+void initialize(CheckMan &checkMan)
 {
     g_visible = false;
     g_selectedCategory = 0;
     g_selectedPreset = 0;
+    g_checkMan = &checkMan;
 
     wolf::addCommand("warps", []([[maybe_unused]] const std::vector<std::string> &args) { g_visible = true; }, "Enable the warps menu");
 }
@@ -286,6 +289,15 @@ static void executeWarp(const okami::WarpData &data)
 
     auto *warpPtr = reinterpret_cast<okami::WarpData *>(base + okami::main::warpData);
     *warpPtr = data;
+
+    // Suppress check sending across the warp transition. The map's init
+    // flips state bits (brushes, world-state, etc.) that look like
+    // legitimate 0->1 transitions to our monitors, but they're not real
+    // gameplay events. The post-load onPlayStart re-enables sending.
+    if (g_checkMan)
+    {
+        g_checkMan->enableSending(false);
+    }
 
     auto trigger = reinterpret_cast<TriggerWarpFn>(base + okami::main::triggerWarpFn);
     auto *buffer = reinterpret_cast<void *>(base + okami::main::warpDataBuffer);
