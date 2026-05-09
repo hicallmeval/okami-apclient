@@ -7,6 +7,7 @@
 #include "archipelagosocket.h"
 #include "checkman.h"
 #include "console_commands.h"
+#include "eventfix/eventfix.hpp"
 #include "gamestate_accessors.hpp"
 #include "itempatch.hpp"
 #include "rewardman.h"
@@ -87,6 +88,8 @@ class APClientMod
         // Install hooks before patchItemParams so they intercept game events.
         itempatch::initialize();
         itempatch::patchItemParams();
+
+        eventfix::initialize();
 
         g_saveMan = std::make_unique<SaveMan>(ArchipelagoSocket::instance());
         g_saveMan->initialize();

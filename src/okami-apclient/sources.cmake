@@ -13,6 +13,9 @@ set(okami-apclient_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/data/msd.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/data/resourcepkg.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/data/shopdata.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/eventfix/cave_of_nagi.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/eventfix/common.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/eventfix/eventfix.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gamestate_accessors.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/itempatch.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/okami-apclient.cpp
