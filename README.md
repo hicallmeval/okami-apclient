@@ -82,6 +82,10 @@ Contributions are welcome! Please:
 
 ## Acknowledgements
 
+Projects and people who aren't listed as contributors but have been invaluable as references or assistance
+
+- **Shintensu**'s [OriginEdit](https://github.com/Shintensu/OriginEdit)
+- **whataboutclyde**'s [okami-utils](https://github.com/whataboutclyde/okami-utils)
 - All of the wonderful contributors to the [Okami Reverse Engineering Wiki](https://okami.speedruns.wiki/Reverse_Engineering)
 - Loader and APClient icon: **@sidorak26** on the Archipelago Discord
 
