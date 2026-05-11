@@ -28,6 +28,7 @@ extern BitFieldAccessor<64> obtainedBrushesSource;
 extern BitFieldAccessor<32> keyItemsAcquired;
 extern BitFieldAccessor<32> goldDustsAcquired;
 extern BitFieldAccessor<32> brushUpgrades;
+extern BitFieldAccessor<86> globalGameState;
 extern Accessor<okami::CollectionData> collectionData;
 extern Accessor<okami::WorldStateData> worldStateData;
 extern Accessor<okami::TrackerData> trackerData;
@@ -38,5 +39,10 @@ extern Accessor<std::array<okami::ItemParam, okami::ItemTypes::NUM_ITEM_TYPES>> 
 // Initialize all accessors
 // Must be called during mod startup before receiving any items
 void initialize();
+
+// True while the engine is mid-load (GGS bit 16, "Related to Loading
+// Screens?"). Used to suppress check-sending and brush-bit-set passes
+// that fire from map-init safety nets (see issue #149).
+bool isInLoadingPhase();
 
 } // namespace apgame

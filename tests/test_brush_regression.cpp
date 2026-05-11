@@ -598,6 +598,36 @@ TEST_CASE_METHOD(BrushManFixture, "BrushMan: bit with no APWorld location is ful
     tearDown();
 }
 
+TEST_CASE_METHOD(BrushManFixture, "BrushMan: suppressed during loading phase (GGS bit 16)", "[brush][regression][brushman][loading]")
+{
+    // Reproduces issue #149: on Cave of Nagi entry, FUN_1804c3c90 (a
+    // sizeable map-init function) calls the brush-bit-set with bit 22
+    // (Rejuvenation) as a vanilla safety net. The hook must not queue
+    // an AP check for this; in AP mode the brush is randomized and the
+    // player hasn't earned the location. The hook must ALSO block the
+    // set, or vanilla would grant the brush behind AP's back.
+    setUp();
+
+    // Simulate the loading screen: GGS bit 16 ("Related to Loading
+    // Screens?") set. This is what flips 1->0 when WOLF logs
+    // "Game Loaded and Gameplay Started (flag 16: Loading -> gameplay)".
+    apgame::globalGameState->Set(16);
+
+    bool blocked = wolf::mock::triggerBrushEdit(22, 0);
+    CHECK(blocked); // bit set blocked
+    brushMan_->tick();
+    CHECK(sentChecks_.empty()); // and no check queued
+
+    // Sanity: once the load completes, the next set queues normally.
+    apgame::globalGameState->Clear(16);
+    REQUIRE(wolf::mock::triggerBrushEdit(22, 0));
+    brushMan_->tick();
+    REQUIRE(sentChecks_.size() == 1);
+    CHECK(sentChecks_[0] == checks::getBrushCheckId(22));
+
+    tearDown();
+}
+
 TEST_CASE_METHOD(BrushManFixture, "BrushMan: out-of-range bitIndex falls through", "[brush][regression][brushman][gating]")
 {
     setUp();
