@@ -75,6 +75,18 @@ bool dispatchBrushEdit(int bitIndex, int operation, BrushMan &handler)
     if (!g_active.load(std::memory_order_acquire))
         return false;
 
+    // Block any brush set that fires during a map-load phase. The engine
+    // has safety-net code paths (e.g. CoN's FUN_1804c3c90) that set
+    // brush bits on map entry "just in case"; in AP mode those bits are
+    // randomized items, so we both suppress the AP check (the player
+    // didn't earn the location) AND block the set (don't let vanilla
+    // grant the brush). Issue #149.
+    if (apgame::isInLoadingPhase())
+    {
+        wolf::logDebug("[BrushMan] suppressed bit=%d (loading phase)", bitIndex);
+        return true;
+    }
+
     const int64_t checkId = getBrushCheckId(bitIndex);
 
     // Only intercept bits whose location ID is in the APWorld. Bits the

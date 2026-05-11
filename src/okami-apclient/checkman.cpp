@@ -7,6 +7,7 @@
 #include "checks/containers.hpp"
 #include "checks/gamestate_monitors.hpp"
 #include "checks/shops.hpp"
+#include "gamestate_accessors.hpp"
 #include "isocket.h"
 
 CheckMan::CheckMan(ISocket &socket) : socket_(socket)
@@ -228,6 +229,19 @@ void CheckMan::sendCheck(int64_t checkId)
     if (!sendingEnabled_ || !socket_.isConnected())
     {
         wolf::logDebug("[CheckMan] Skipped check %" PRId64 " (sending=%d, connected=%d)", checkId, sendingEnabled_ ? 1 : 0, socket_.isConnected() ? 1 : 0);
+        return;
+    }
+
+    // Defense in depth: drop any check that fires mid-load. Today the
+    // other check sources (containers, shops, gamestate monitors) only
+    // fire on player input the engine doesn't process during a loading
+    // screen, so this is a no-op for them; it catches any future source
+    // that might fire from a map-init code path. BrushMan has its own
+    // earlier loading-phase gate because it also needs to block the
+    // bit-set, not just drop the queue. See issue #149.
+    if (apgame::isInLoadingPhase())
+    {
+        wolf::logDebug("[CheckMan] Skipped check %" PRId64 " (in loading phase)", checkId);
         return;
     }
 

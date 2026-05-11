@@ -13,6 +13,7 @@ BitFieldAccessor<64> obtainedBrushesSource;
 BitFieldAccessor<32> keyItemsAcquired;
 BitFieldAccessor<32> goldDustsAcquired;
 BitFieldAccessor<32> brushUpgrades;
+BitFieldAccessor<86> globalGameState;
 Accessor<okami::CollectionData> collectionData;
 Accessor<okami::WorldStateData> worldStateData;
 Accessor<okami::TrackerData> trackerData;
@@ -50,11 +51,21 @@ void initialize()
     // Brush upgrades from TrackerData
     brushUpgrades = BitFieldAccessor<32>("main.dll", trackerDataAddr + offsetof(okami::TrackerData, brushUpgrades));
 
+    // Global game state flags (loading-screen bit 16, menu bit 17, etc.)
+    globalGameState = BitFieldAccessor<86>("main.dll", okami::main::globalGameStateFlags);
+
     // Item parameter table
     constexpr uintptr_t itemParamsAddr = 0x7AB220;
     itemParams = Accessor<std::array<okami::ItemParam, okami::ItemTypes::NUM_ITEM_TYPES>>("main.dll", itemParamsAddr);
 
     wolf::logInfo("[apgame] Game state accessors initialized");
+}
+
+bool isInLoadingPhase()
+{
+    if (!globalGameState.is_bound())
+        return false;
+    return globalGameState->IsSet(16);
 }
 
 } // namespace apgame
