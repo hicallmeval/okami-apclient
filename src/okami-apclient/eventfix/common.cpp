@@ -99,8 +99,16 @@ void releaseSchedulerFrame()
 {
     if (s_mainBase == 0)
         return;
+    // kOff_StageMainCtx is the address of a pointer (Ghidra PTR_DAT_*),
+    // not a struct in place. Natural callers pass the dereferenced
+    // pointer value as ctx; FUN_1803f48d0 then reads *(ctx+0x30) for
+    // the scheduler frame. Passing the raw address instead reads
+    // unrelated memory and crashes.
+    auto **ctxSlot = reinterpret_cast<void **>(s_mainBase + kOff_StageMainCtx);
+    auto *ctx = *ctxSlot;
+    if (ctx == nullptr)
+        return;
     auto fn = reinterpret_cast<SchedulerExitFn>(s_mainBase + kOff_SchedulerExit);
-    auto *ctx = reinterpret_cast<void *>(s_mainBase + kOff_StageMainCtx);
     fn(ctx, 1);
 }
 
