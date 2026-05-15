@@ -20,10 +20,15 @@ constexpr uintptr_t kOff_StateBitSet = 0x170830;             // FUN_180170830
 constexpr uintptr_t kOff_StateBitClear = 0x1707C0;           // FUN_1801707c0
 constexpr uintptr_t kOff_StageSubStateTransition = 0x48C720; // FUN_18048c720
 constexpr uintptr_t kOff_StageDescriptor = 0xB65ED0;         // DAT_180b65ed0
+constexpr uintptr_t kOff_BrushStateRelease = 0x170690;       // FUN_180170690
+constexpr uintptr_t kOff_SchedulerExit = 0x3F48D0;           // FUN_1803f48d0
+constexpr uintptr_t kOff_StageMainCtx = 0x7A8CB0;            // PTR_DAT_1807a8cb0
 
 using BrushBitOpFn = void(__fastcall *)(void *brushState, uint32_t bitIdx, int32_t op);
 using StateBitFn = void(__fastcall *)(uint32_t encoded);
 using SubStateFn = void(__fastcall *)(void *descriptor, uint32_t subStateId);
+using BrushReleaseFn = void(__fastcall *)(void *brushState);
+using SchedulerExitFn = void(__fastcall *)(void *ctx, uint64_t flag);
 
 uintptr_t s_mainBase = 0;
 
@@ -79,6 +84,24 @@ void transitionStageSubState(uint32_t subStateId)
     auto fn = reinterpret_cast<SubStateFn>(s_mainBase + kOff_StageSubStateTransition);
     auto *descriptor = reinterpret_cast<void *>(s_mainBase + kOff_StageDescriptor);
     fn(descriptor, subStateId);
+}
+
+void releaseBrushState()
+{
+    if (s_mainBase == 0)
+        return;
+    auto fn = reinterpret_cast<BrushReleaseFn>(s_mainBase + kOff_BrushStateRelease);
+    auto *brushState = reinterpret_cast<void *>(s_mainBase + kOff_BrushState);
+    fn(brushState);
+}
+
+void releaseSchedulerFrame()
+{
+    if (s_mainBase == 0)
+        return;
+    auto fn = reinterpret_cast<SchedulerExitFn>(s_mainBase + kOff_SchedulerExit);
+    auto *ctx = reinterpret_cast<void *>(s_mainBase + kOff_StageMainCtx);
+    fn(ctx, 1);
 }
 
 } // namespace eventfix

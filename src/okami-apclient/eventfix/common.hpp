@@ -51,6 +51,23 @@ void clearStateBit(uint32_t encoded);
 // No-op if initializeCommon() has not bound the main.dll base.
 void transitionStageSubState(uint32_t subStateId);
 
+// Release the brush state lock via FUN_180170690(brushState). Used in
+// bypass cleanup where the brush state has been engaged (e.g. by a
+// cinematic that pulls up the celestial brush) and the natural release
+// path in the suppressed callback won't run.
+void releaseBrushState();
+
+// Run the natural cutscene-exit + scheduler-frame release via
+// FUN_1803f48d0(stageCtx, 1). This is what FUN_1804ca860's success
+// path (and other tutorial completion handlers) call at the tail. It
+// internally invokes FUN_1803f4730 (a broader cutscene-mode clear than
+// clearCutsceneModeBits) plus FUN_1804561d0 to release the active
+// scheduler frame. Touches the active stage scheduler context at
+// PTR_DAT_1807a8cb0, so it must be called from a stub running on a
+// valid scheduler frame (any MinHook-installed bypass dispatched via
+// the natural TICK path qualifies).
+void releaseSchedulerFrame();
+
 // Initialize shared state. Called by eventfix::initialize() before any
 // bypass is installed; binds the main.dll base address used by the
 // helpers above. Returns false if main.dll isn't loaded.
