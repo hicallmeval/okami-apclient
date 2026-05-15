@@ -32,9 +32,16 @@ namespace
 //
 //   * clear DAT_180b6b2a0 bit 0x80         (tutorial input-lock)
 //   * clear DAT_180b6b2a4 bits 0x20020004  (secondary cinematic flags)
-//   * call FUN_180170690(brushState)        (brush state release)
 //   * call FUN_1803f48d0(stageCtx, 1)       (full cutscene-exit and
 //                                            scheduler-frame release)
+//
+// We deliberately do NOT call FUN_180170690 ("restore brush state")
+// even though the natural success path ends with it. That function
+// memcpy's a backup region at brushState+0xC0..+0x108 over the live
+// brush bitfields at +0x70 and +0x80, and is paired with
+// FUN_1801706d0 (save) at the tutorial's start. Without a prior save
+// the backup is uninitialized, so calling the restore wipes every
+// brush the player owns.
 void __fastcall stubWaterLilyTutorial()
 {
     eventfix::clearCutsceneModeBits();
@@ -46,7 +53,6 @@ void __fastcall stubWaterLilyTutorial()
         *reinterpret_cast<volatile uint32_t *>(base + 0xB6B2A4) &= ~0x20020004u;
     }
 
-    eventfix::releaseBrushState();
     eventfix::grantBrush(okami::BrushOverlay::water_lily);
     eventfix::transitionStageSubState(0xe);
     eventfix::releaseSchedulerFrame();

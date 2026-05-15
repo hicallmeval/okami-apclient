@@ -51,12 +51,6 @@ void clearStateBit(uint32_t encoded);
 // No-op if initializeCommon() has not bound the main.dll base.
 void transitionStageSubState(uint32_t subStateId);
 
-// Release the brush state lock via FUN_180170690(brushState). Used in
-// bypass cleanup where the brush state has been engaged (e.g. by a
-// cinematic that pulls up the celestial brush) and the natural release
-// path in the suppressed callback won't run.
-void releaseBrushState();
-
 // Run the natural cutscene-exit + scheduler-frame release via
 // FUN_1803f48d0(stageCtx, 1). This is what FUN_1804ca860's success
 // path (and other tutorial completion handlers) call at the tail. It
