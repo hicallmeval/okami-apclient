@@ -6,6 +6,7 @@
 
 #include "cave_of_nagi.hpp"
 #include "common.hpp"
+#include "kamiki_village.hpp"
 #include "registry.hpp"
 
 namespace eventfix
@@ -46,6 +47,7 @@ void initialize()
 
     int installed = 0;
     installAll(cave_of_nagi::getBypasses(), installed);
+    installAll(kamiki_village::getBypasses(), installed);
 
     wolf::logInfo("[eventfix] installed %d bypass hooks", installed);
 }
