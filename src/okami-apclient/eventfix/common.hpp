@@ -40,6 +40,17 @@ void grantBrush(okami::BrushOverlay brush);
 void setStateBit(uint32_t encoded);
 void clearStateBit(uint32_t encoded);
 
+// Drive the active stage descriptor (DAT_180b65ed0) into sub-state
+// `subStateId` via FUN_18048c720(descriptor, subStateId). The stage
+// descriptor governs per-stage callback installation and lifecycle;
+// most natural tutorial chains end by transitioning to a specific
+// sub-state in their epilogue. Call this from a bypass stub to land
+// the descriptor in the same state the natural chain would have
+// reached, without running the chain.
+//
+// No-op if initializeCommon() has not bound the main.dll base.
+void transitionStageSubState(uint32_t subStateId);
+
 // Initialize shared state. Called by eventfix::initialize() before any
 // bypass is installed; binds the main.dll base address used by the
 // helpers above. Returns false if main.dll isn't loaded.
