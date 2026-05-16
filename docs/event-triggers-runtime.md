@@ -210,6 +210,20 @@ Dispatch gates within `+0x3A0`:
 | 41 (low=41)  | `0x00400000` | "rejuv pending" — gates `FUN_1804c31c0`      |
 | 42 (low=42)  | `0x00200000` | "constellation done" — gates `FUN_1804c1f50` |
 
+## Kamiki Village Water Lily chain (reference)
+
+Confirmed offsets and dispatch order for the Sakuya descent + Water Lily grant + forced lily-pad tutorial. Hooked the same way as CoN: replace `FUN_1804c64a0` with a stub that grants the brush and jumps the stage descriptor to sub-state `0xe`.
+
+| Function        | Offset      | Role                                                                                                                                                  |
+| --------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FUN_1804c64a0` | `+0x4C64A0` | first link (no static xrefs; TICK-dispatched). Steps stage descriptor 10 -> 11 -> 12 via `FUN_18048c720`, pokes worldStateBase `+0x3cc` bit 4 and `+0x3bc` bit `0x10`, schedules `FUN_1804c7d80`. |
+| `FUN_1804c7d80` | `+0x4C7D80` | Sakuya descent + camera/UI fade ramp. Sets `+0x35C` bits, transitions descriptor to `0xd`, schedules `FUN_1804ca430`.                                 |
+| `FUN_1804ca430` | `+0x4CA430` | Water Lily grant: `FUN_18017c270(brushState, 5)`. Plays grant animation; runs `FUN_1803f5170(.., FUN_1804ca860, ..)` to enter the tutorial loop; queues scripts `0x10f5`, `0x10f6`. |
+| `FUN_1804ca860` | `+0x4CA860` | lily-pad practice loop. Success path transitions stage descriptor to `0xe` via `FUN_18048c720` and calls `FUN_180170690(brushState)`.                 |
+| `FUN_18048c720` | `+0x48C720` | "transition to sub-state N" entry point (also documented in the CoN reference above)                                                                  |
+
+The bypass installed by `src/okami-apclient/eventfix/kamiki_village.cpp` replaces `FUN_1804c64a0` with a stub that calls `clearCutsceneModeBits()`, `grantBrush(BrushOverlay::water_lily)`, and `transitionStageSubState(0xe)`. The natural chain's per-map state writes (e.g. `KamikiVillage` worldStateBits 11 / 149 / 163) are set elsewhere (trigger volumes, post-bloom scripts); the bypass does not interact with them.
+
 ## Stage architecture (one level above TICK)
 
 The CoN TICK has zero static call sites in main.dll. Its only xref is its `.pdata` exception-unwind entry. Despite that, scripts and TICKs in this engine are *not* loaded from external files: there is no separate script bytecode language. Scripts are compiled C++ callbacks baked into main.dll, scheduled by ID via `FUN_1803f35f0(ctx, script_id, ...)` and similar. So the TICK gets installed at runtime through some indirection that we haven't fully traced statically (likely a stage-id -> function-pointer table populated during stage init), but the answer lives somewhere inside main.dll, not in an on-disk script file. The on-disk room files (`data_pc/stN/rXXX.bin`) carry SCA trigger volumes, MSD strings, and per-room asset data, not callback pointers. That said, the *parallel* machinery (the stage descriptor object the TICK eventually drives) is fully visible in the binary.
