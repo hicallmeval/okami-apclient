@@ -6,6 +6,7 @@
 #include <okami/spawntable.h>
 
 #include <okami/itemtype.hpp>
+#include <okami/maptype.hpp>
 #include <wolf_framework.hpp>
 
 #include "../itempatch.hpp"
@@ -94,6 +95,40 @@ void ContainerMan::onSpawnTablePopulate(void *spawnTable)
     uintptr_t mainBase = reinterpret_cast<uintptr_t>(wolf::getModuleBase("main.dll"));
     auto *currentMapPtr = reinterpret_cast<uint16_t *>(mainBase + CURRENT_MAP_ID_OFFSET);
     currentLevelId_ = *currentMapPtr;
+    uint16_t replaceLevelId = currentLevelId_;
+
+    // For maps that have different versions, we replace their id to make containers form every version sync
+
+    // Using a switch instead of doing maths with map ids to ensure we don't set currentLevelId_ to an ivalid map.
+    switch (currentLevelId_)
+    {
+    case okami::MapID::ShinshuFieldCursed:
+        replaceLevelId = okami::MapID::ShinshuFieldHealed;
+        break;
+    case okami::MapID::AgataForestCursed:
+        replaceLevelId = okami::MapID::AgataForestHealed;
+        break;
+    case okami::MapID::TakaPassCursed:
+        replaceLevelId = okami::MapID::TakaPassHealed;
+        break;
+    case okami::MapID::RyoshimaCoastCursed:
+        replaceLevelId = okami::MapID::RyoshimaCoastHealed;
+        break;
+    case okami::MapID::KamuiCursed:
+        replaceLevelId = okami::MapID::KamuiHealed;
+        break;
+    case okami::MapID::KamikiVillagePostTei:
+        replaceLevelId = okami::MapID::KamikiVillage;
+        break;
+    default:
+        break;
+    }
+
+    if (replaceLevelId != currentLevelId_)
+    {
+        wolf::logDebug("[ContainerMan] Using id 0x%02X instead of 0x%02X for this map.", replaceLevelId, currentLevelId_);
+        currentLevelId_ = replaceLevelId;
+    }
 
     // Clear tracking from previous level
     trackedContainerIndices_.clear();
