@@ -215,6 +215,8 @@ TEST_CASE_METHOD(RewardManFixture, "Grant ProgressiveWeaponReward progression", 
 {
     SetUp();
 
+    constexpr uint8_t kSnalingBeast = 0x11;
+    constexpr uint8_t kInfinityJudge = 0x12;
     constexpr uint8_t kTrinityMirror = 0x13;
     constexpr uint8_t kSolarFlare = 0x14;
 
@@ -225,11 +227,36 @@ TEST_CASE_METHOD(RewardManFixture, "Grant ProgressiveWeaponReward progression", 
         auto result = rewardMan_->grantReward(0x300);
         REQUIRE(result.has_value());
         REQUIRE(wolf::mock::giveItemCalls.size() == 1);
-        CHECK(wolf::mock::giveItemCalls[0].itemId == kTrinityMirror);
+        CHECK(wolf::mock::giveItemCalls[0].itemId == kSnalingBeast);
     }
 
     SECTION("Second grant gives stage 2")
     {
+        apgame::collectionData->inventory[kSnalingBeast] = 1;
+        wolf::mock::giveItemCalls.clear();
+
+        auto result = rewardMan_->grantReward(0x300);
+        REQUIRE(result.has_value());
+        REQUIRE(wolf::mock::giveItemCalls.size() == 1);
+        CHECK(wolf::mock::giveItemCalls[0].itemId == kInfinityJudge);
+    }
+
+    SECTION("Third grant gives stage 3")
+    {
+        apgame::collectionData->inventory[kSnalingBeast] = 1;
+        apgame::collectionData->inventory[kInfinityJudge] = 1;
+        wolf::mock::giveItemCalls.clear();
+
+        auto result = rewardMan_->grantReward(0x300);
+        REQUIRE(result.has_value());
+        REQUIRE(wolf::mock::giveItemCalls.size() == 1);
+        CHECK(wolf::mock::giveItemCalls[0].itemId == kTrinityMirror);
+    }
+
+    SECTION("Foruth grant gives stage 4")
+    {
+        apgame::collectionData->inventory[kSnalingBeast] = 1;
+        apgame::collectionData->inventory[kInfinityJudge] = 1;
         apgame::collectionData->inventory[kTrinityMirror] = 1;
         wolf::mock::giveItemCalls.clear();
 
@@ -241,6 +268,8 @@ TEST_CASE_METHOD(RewardManFixture, "Grant ProgressiveWeaponReward progression", 
 
     SECTION("Grant at max stage is no-op")
     {
+        apgame::collectionData->inventory[kSnalingBeast] = 1;
+        apgame::collectionData->inventory[kInfinityJudge] = 1;
         apgame::collectionData->inventory[kTrinityMirror] = 1;
         apgame::collectionData->inventory[kSolarFlare] = 1;
         wolf::mock::giveItemCalls.clear();
