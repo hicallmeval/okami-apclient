@@ -14,7 +14,9 @@ namespace rewards::traps
 namespace
 {
 
-// 50% of max HP, floored at 1 so it never kills.
+/**
+ * @brief Deal 50% of max HP, floored at 1 so it never kills
+ */
 void applyDamageTrap()
 {
     auto *stats = apgame::characterStats.get_ptr();
@@ -29,6 +31,9 @@ void applyDamageTrap()
     notificationwindow::queue("[Trap] Evil Charm: lost half your health");
 }
 
+/**
+ * @brief Drain all current ink
+ */
 void applyInkLossTrap()
 {
     apgame::collectionData->currentInk = 0;
@@ -37,6 +42,9 @@ void applyInkLossTrap()
     notificationwindow::queue("[Trap] Dry Inkwell: ink drained");
 }
 
+/**
+ * @brief Drain the Astral Pouch (food) reserve
+ */
 void applyFoodLossTrap()
 {
     apgame::characterStats->currentFood = 0;
