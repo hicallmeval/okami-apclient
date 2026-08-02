@@ -15,7 +15,7 @@ namespace
 
 // Progressive weapon stage definitions
 // Each array lists the game item IDs in progression order
-constexpr std::array<uint8_t, 2> kMirrorStages = {0x13, 0x14};                   // Trinity Mirror -> Solar Flare
+constexpr std::array<uint8_t, 4> kMirrorStages = {0x11, 0x12, 0x13, 0x14};       // Snarling Beast -> Solar Flare
 constexpr std::array<uint8_t, 5> kRosaryStages = {0x15, 0x16, 0x17, 0x18, 0x19}; // Devout -> Tundra Beads
 constexpr std::array<uint8_t, 5> kSwordStages = {0x1A, 0x1B, 0x1C, 0x1D, 0x1E};  // Tsumugari -> Thunder Edge
 
@@ -25,7 +25,7 @@ constexpr std::array<uint8_t, 5> kSwordStages = {0x1A, 0x1B, 0x1C, 0x1D, 0x1E}; 
 template <size_t N> constexpr const std::array<uint8_t, N> *getProgressiveStages(int64_t apItemId);
 
 // Specializations
-template <> constexpr const std::array<uint8_t, 2> *getProgressiveStages<2>(int64_t apItemId)
+template <> constexpr const std::array<uint8_t, 4> *getProgressiveStages<4>(int64_t apItemId)
 {
     if (apItemId == 0x300)
         return &kMirrorStages;
